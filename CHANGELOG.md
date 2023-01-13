@@ -2,6 +2,9 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.1 (2023-01-13)
+
+
 ## v0.1.0 (2023-01-13)
 ### Feature
 * Migrate features from semantics ([`a7c620f`](https://github.com/EDIorg/spinneret/commit/a7c620f4cb50d4992fcd39412a34177e5fffcb19))
