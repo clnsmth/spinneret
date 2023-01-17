@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.2 (2023-01-17)
+### Documentation
+* Update project documentation ([`85ad69c`](https://github.com/EDIorg/spinneret/commit/85ad69c2a6b954d00b59348cb1ecec30b4cba3dc))
+
 ## v0.1.1 (2023-01-13)
 
 
