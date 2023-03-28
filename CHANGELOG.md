@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.3 (2023-03-28)
+### Documentation
+* Update contributing guidelines ([`9a8d951`](https://github.com/EDIorg/spinneret/commit/9a8d9516ea63fce42dcbb229ccc3e5392ac889ec))
+
 ## v0.1.2 (2023-01-17)
 ### Documentation
 * Update project documentation ([`85ad69c`](https://github.com/EDIorg/spinneret/commit/85ad69c2a6b954d00b59348cb1ecec30b4cba3dc))
