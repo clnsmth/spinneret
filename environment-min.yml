@@ -1,0 +1,7 @@
+name: spinneret
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+prefix: /opt/miniconda3/envs/spinneret

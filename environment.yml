@@ -9,13 +9,12 @@ dependencies:
   - libsqlite=3.40.0
   - libzlib=1.2.13
   - ncurses=6.3
-  - openssl=3.0.7
-  - pip=22.3.1
-  - python=3.9.15
-  - readline=8.1.2
+  - openssl=3.1.0
+  - pip=23.0.1
+  - python=3.9.16
+  - readline=8.2
   - tk=8.6.12
-  - tzdata=2022g
-  - wheel=0.38.4
+  - tzdata=2023b
   - xz=5.2.6
   - pip:
       - alabaster==0.7.12
@@ -45,7 +44,6 @@ dependencies:
       - fastjsonschema==2.16.2
       - gitdb==4.0.10
       - gitpython==3.1.30
-      - greenlet==2.0.1
       - idna==3.4
       - imagesize==1.4.1
       - importlib-metadata==6.0.0
@@ -137,6 +135,7 @@ dependencies:
       - urllib3==1.26.14
       - wcwidth==0.2.5
       - webencodings==0.5.1
+      - wheel==0.38.4
       - wrapt==1.14.1
       - zipp==3.11.0
-prefix: /Users/csmith/opt/anaconda3/envs/spinneret
+prefix: /opt/miniconda3/envs/spinneret
