@@ -1,0 +1,11 @@
+﻿mapping_set_id: [ADD UUID HERE]
+license: https://creativecommons.org/publicdomain/zero/1.0/
+mapping_set_version: 0.0.0.9000
+mapping_set_description: This mapping set is a manually curated alignment of the United States Geological Survey World Terrestrial Ecosystems (WTE) 2020 data product (https://doi.org/10.5066/P9DO61LP). Property alignment was created using the Simple Standard for Sharing Ontology Mappings (SSSOM; https://mapping-commons.github.io/sssom/home/). The motivation of this mapping is to facilitate the classification of ecosystems via geospatial coordinates (point, multipoint, polyline, polygon, envelope) for dataset annotation to improve search and discovery by potential data users. A high degree of precision was attempted. Note, the WTE terminology is not a part of a formal vocabulary/ontology with web resolvable entities. Therefore, values in the subject_id field of the wte-envo.sssom.tsv (CURIEs), will not be web resolvable once expanded. The curie_map property for WTE below, lists the authoritative definitions for the mapped WTE ecosystem attributes, which takes the form of a research article.
+subject_source: https://doi.org/10.5066/P9DO61LP
+subject_source_version: 
+object_source: https://doi.org/10.5281/zenodo.7636736
+object_source_version: v2023-02-13
+curie_map:
+  WTE: https://doi.org/10.1016/j.gecco.2019.e00860/
+  ENVO: http://purl.obolibrary.org/obo/ENVO_

@@ -1,0 +1,30 @@
+subject_category	subject_id	subject_label	predicate_id	object_id	object_label	confidence	comment	mapping_justification	mapping_date	creator_id
+WTE:Landform	WTE:plains	plains								
+WTE:Landform	WTE:hills	hills								
+WTE:Landform	WTE:mountains	mountains								
+WTE:Landform	WTE:tablelands	tablelands								
+WTE:Landcover	WTE:Forest	Forest								
+WTE:Landcover	WTE:Shrubland	Shrubland								
+WTE:Landcover	WTE:Grassland	Grassland								
+WTE:Landcover	WTE:Sparsely or Non-vegetated	Sparsely or Non-vegetated								
+WTE:Landcover	WTE:Cropland	Cropland								
+WTE:Landcover	WTE:Snow and Ice	Snow and Ice								
+WTE:Landcover	WTE:Settlement	Settlement								
+WTE:World Climate Region	WTE:Polar Moist	Polar Moist								
+WTE:World Climate Region	WTE:Polar Dry	Polar Dry								
+WTE:World Climate Region	WTE:Polar Desert	Polar Desert								
+WTE:World Climate Region	WTE:Boreal Moist	Boreal Moist								
+WTE:World Climate Region	WTE:Boreal Dry	Boreal Dry								
+WTE:World Climate Region	WTE:Boreal Desert	Boreal Desert								
+WTE:World Climate Region	WTE:Cool Temperate Moist	Cool Temperate Moist								
+WTE:World Climate Region	WTE:Cool Temperate Dry	Cool Temperate Dry								
+WTE:World Climate Region	WTE:Cool Temperate Desert	Cool Temperate Desert								
+WTE:World Climate Region	WTE:Warm Temperate Moist	Warm Temperate Moist								
+WTE:World Climate Region	WTE:Warm Temperate Dry	Warm Temperate Dry								
+WTE:World Climate Region	WTE:Warm Temperate Desert	Warm Temperate Desert								
+WTE:World Climate Region	WTE:Subtropical Moist	Subtropical Moist								
+WTE:World Climate Region	WTE:Subtropical Dry	Subtropical Dry								
+WTE:World Climate Region	WTE:Subtropical Desert	Subtropical Desert								
+WTE:World Climate Region	WTE:Tropical Moist	Tropical Moist								
+WTE:World Climate Region	WTE:Tropical Dry	Tropical Dry								
+WTE:World Climate Region	WTE:Tropical Desert	Tropical Desert								
