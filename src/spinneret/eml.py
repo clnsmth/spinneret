@@ -24,6 +24,8 @@ def get_geographic_coverage(eml):
     """
     xml = etree.parse(eml)
     gc = xml.xpath(".//geographicCoverage")
+    if len(gc) == 0:
+        return None
     res = []
     for item in gc:
         res.append(GeographicCoverage(item))
