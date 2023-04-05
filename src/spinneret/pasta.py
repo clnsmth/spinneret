@@ -2,6 +2,7 @@
 import requests
 from lxml import etree
 from io import BytesIO
+from spinneret.utilities import user_agent
 
 
 def list_data_package_scopes():
