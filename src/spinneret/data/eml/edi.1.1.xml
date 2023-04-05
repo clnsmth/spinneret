@@ -70,16 +70,43 @@
 				agrees to abide by the terms of this agreement. Thank you for your cooperation. </para>
     </intellectualRights>
     <coverage>
+      <!-- For testing purposes, do not remove. This geometry is a box. -->
       <geographicCoverage>
-        <geographicDescription>the University of Kansas Field Station (KUFS) located in eastern
-					Kansas in the prairie-forest ecotone region of the central USA. KUFS and is located just
-					north of Lawrence, Kansas, USA.</geographicDescription>
+        <geographicDescription>Bounding box</geographicDescription>
         <boundingCoordinates>
-          <westBoundingCoordinate>-95.1976</westBoundingCoordinate>
-          <eastBoundingCoordinate>-95.1834</eastBoundingCoordinate>
-          <northBoundingCoordinate>39.0525</northBoundingCoordinate>
-          <southBoundingCoordinate>39.0408</southBoundingCoordinate>
+          <westBoundingCoordinate>-72.22</westBoundingCoordinate>
+          <eastBoundingCoordinate>-72.21</eastBoundingCoordinate>
+          <northBoundingCoordinate>+42.48</northBoundingCoordinate>
+          <southBoundingCoordinate>+42.47</southBoundingCoordinate>
         </boundingCoordinates>
+      </geographicCoverage>
+      <!-- For testing purposes, do not remove. This geometry is a point. -->
+      <geographicCoverage>
+        <geographicDescription>Point location</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-72.22</westBoundingCoordinate>
+          <eastBoundingCoordinate>-72.22</eastBoundingCoordinate>
+          <northBoundingCoordinate>+42.48</northBoundingCoordinate>
+          <southBoundingCoordinate>+42.48</southBoundingCoordinate>
+        </boundingCoordinates>
+      </geographicCoverage>
+      <!-- For testing purposes, do not remove. This geometry is a polygon. -->
+      <geographicCoverage>
+        <geographicDescription>Polygon</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-72.22</westBoundingCoordinate>
+          <eastBoundingCoordinate>-72.21</eastBoundingCoordinate>
+          <northBoundingCoordinate>+42.48</northBoundingCoordinate>
+          <southBoundingCoordinate>+42.47</southBoundingCoordinate>
+        </boundingCoordinates>
+        <datasetGPolygon>
+          <datasetGPolygonOuterGRing>
+            <gRing>-119.453,35.0 -125,37.5555 -122,40 -119.453,35.0</gRing>
+          </datasetGPolygonOuterGRing>
+          <datasetGPolygonExclusionGRing>
+            <gRing>-120.453,36.0 -124,37.5555 -122,39 -120.453,36.0</gRing>
+          </datasetGPolygonExclusionGRing>
+        </datasetGPolygon>
       </geographicCoverage>
       <temporalCoverage>
         <rangeOfDates>
