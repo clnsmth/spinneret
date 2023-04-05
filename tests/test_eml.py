@@ -27,6 +27,9 @@ def test_geom_type(geocov):
     assert geocov[0]._geom_type() == "envelope"
     assert geocov[1]._geom_type() == "point"
     assert geocov[2]._geom_type() == "polygon"
+    assert geocov[0]._geom_type(schema="esri") == "esriGeometryEnvelope"
+    assert geocov[1]._geom_type(schema="esri") == "esriGeometryPoint"
+    assert geocov[2]._geom_type(schema="esri") == "esriGeometryPolygon"
 
 
 def test_to_esri_geometry(geocov):

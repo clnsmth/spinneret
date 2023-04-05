@@ -183,23 +183,36 @@ class GeographicCoverage:
         except TypeError:
             return None
 
-    def _geom_type(self):
+    def _geom_type(self, schema="eml"):
         """Get geometry type from geographicCoverage
+
+        Parameters
+        ----------
+        schema : str
+            Schema dialect to use when returning values, either "eml" or "esri"
 
         Returns
         -------
         str : geometry type
-            geometry type as "polygon", "point", or "envelope"
+            geometry type as "polygon", "point", or "envelope" for
+            `schema="eml"`, or "esriGeometryPolygon", "esriGeometryPoint", or
+            "esriGeometryEnvelope" for `schema="esri"`
         """
         if self.gc.find(".//datasetGPolygon") is not None:
-            return "polygon"
+            if schema == "eml":
+                return "polygon"
+            return "esriGeometryPolygon"
         if self.gc.find(".//boundingCoordinates") is not None:
             if (
                 self.westBoundingCoordinate() == self.eastBoundingCoordinate()
                 and self.northBoundingCoordinate() == self.southBoundingCoordinate()
             ):
-                return "point"
-            return "envelope"
+                if schema == "eml":
+                    return "point"
+                return "esriGeometryPoint"
+            if schema == "eml":
+                return "envelope"
+            return "esriGeometryEnvelope"
         return None
 
     def to_esri_geometry(self):
