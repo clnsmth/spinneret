@@ -289,7 +289,7 @@ class GeographicCoverage:
             "ymin": self.southBoundingCoordinate(),
             "xmax": self.eastBoundingCoordinate(),
             "ymax": self.northBoundingCoordinate(),
-            "spatialReference": {"wkid": 4326},
+            "spatialReference": {"wkid": 4326}
         }
         return res
 
