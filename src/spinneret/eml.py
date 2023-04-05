@@ -1,4 +1,5 @@
 """EML metadata related operations"""
+import json
 from lxml import etree
 
 
@@ -253,7 +254,7 @@ class GeographicCoverage:
 
         Returns
         -------
-        dict : ESRI JSON point geometry
+        str : ESRI JSON point geometry
             ESRI JSON point geometry
 
         Notes
@@ -269,14 +270,14 @@ class GeographicCoverage:
             "y": self.northBoundingCoordinate(),
             "spatialReference": {"wkid": 4326},
         }
-        return res
+        return json.dumps(res)
 
     def _to_esri_envelope(self):
         """Convert boundingCoordinates to ESRI JSON envelope geometry
 
         Returns
         -------
-        dict : ESRI JSON envelope geometry
+        str : ESRI JSON envelope geometry
             ESRI JSON envelope geometry
 
         Notes
@@ -291,14 +292,14 @@ class GeographicCoverage:
             "ymax": self.northBoundingCoordinate(),
             "spatialReference": {"wkid": 4326}
         }
-        return res
+        return json.dumps(res)
 
     def _to_esri_polygon(self):
         """Convert datasetGPolygon to ESRI JSON polygon geometry
 
         Returns
         -------
-        dict : ESRI JSON polygon geometry
+        str : ESRI JSON polygon geometry
             ESRI JSON polygon geometry
 
         Notes
@@ -331,7 +332,7 @@ class GeographicCoverage:
             if self.datasetGPolygonExclusionGRing() is not None:
                 ring = _format_ring(self.datasetGPolygonExclusionGRing())
                 res["rings"].append(ring)
-            return res
+            return json.dumps(res)
         return None
 
 
