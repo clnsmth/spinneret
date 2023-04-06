@@ -184,7 +184,7 @@ class GeographicCoverage:
         except TypeError:
             return None
 
-    def _geom_type(self, schema="eml"):
+    def geom_type(self, schema="eml"):
         """Get geometry type from geographicCoverage
 
         Parameters
@@ -241,11 +241,11 @@ class GeographicCoverage:
         >>> res[1].to_esri_geometry()
         >>> res[2].to_esri_geometry()
         """
-        if self._geom_type() == "polygon":
+        if self.geom_type() == "polygon":
             return self._to_esri_polygon()
-        if self._geom_type() == "point":
+        if self.geom_type() == "point":
             return self._to_esri_point()
-        if self._geom_type() == "envelope":
+        if self.geom_type() == "envelope":
             return self._to_esri_envelope()
         return None
 

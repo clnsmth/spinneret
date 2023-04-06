@@ -19,17 +19,17 @@ def test_get_geographic_coverage():
 
 
 def test_geom_type(geocov):
-    """Test geographicCoverage _geom_type method
+    """Test geographicCoverage geom_type method
 
     This is a fixture based on the contents of edi.1.1.xml. This fixture
     should be updated whenever that files geographicCoverage changes.
     """
-    assert geocov[0]._geom_type() == "envelope"
-    assert geocov[1]._geom_type() == "point"
-    assert geocov[2]._geom_type() == "polygon"
-    assert geocov[0]._geom_type(schema="esri") == "esriGeometryEnvelope"
-    assert geocov[1]._geom_type(schema="esri") == "esriGeometryPoint"
-    assert geocov[2]._geom_type(schema="esri") == "esriGeometryPolygon"
+    assert geocov[0].geom_type() == "envelope"
+    assert geocov[1].geom_type() == "point"
+    assert geocov[2].geom_type() == "polygon"
+    assert geocov[0].geom_type(schema="esri") == "esriGeometryEnvelope"
+    assert geocov[1].geom_type(schema="esri") == "esriGeometryPoint"
+    assert geocov[2].geom_type(schema="esri") == "esriGeometryPolygon"
 
 
 def test_to_esri_geometry(geocov):
