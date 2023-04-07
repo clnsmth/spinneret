@@ -70,19 +70,19 @@
 				agrees to abide by the terms of this agreement. Thank you for your cooperation. </para>
     </intellectualRights>
     <coverage>
-      <!-- For testing purposes, do not remove. This geometry is a box. -->
+      <!-- For testing purposes, do not remove. -->
       <geographicCoverage>
-        <geographicDescription>Bounding box</geographicDescription>
+        <geographicDescription>Bounding box on land, spanning several ecosystems.</geographicDescription>
         <boundingCoordinates>
-          <westBoundingCoordinate>-72.22</westBoundingCoordinate>
-          <eastBoundingCoordinate>-72.21</eastBoundingCoordinate>
-          <northBoundingCoordinate>+42.48</northBoundingCoordinate>
-          <southBoundingCoordinate>+42.47</southBoundingCoordinate>
+          <westBoundingCoordinate>-123.552</westBoundingCoordinate>
+          <eastBoundingCoordinate>-120.830</eastBoundingCoordinate>
+          <northBoundingCoordinate>40.441</northBoundingCoordinate>
+          <southBoundingCoordinate>39.804</southBoundingCoordinate>
         </boundingCoordinates>
       </geographicCoverage>
-      <!-- For testing purposes, do not remove. This geometry is a point. -->
+      <!-- For testing purposes, do not remove. -->
       <geographicCoverage>
-        <geographicDescription>Point location</geographicDescription>
+        <geographicDescription>Point location on land.</geographicDescription>
         <boundingCoordinates>
           <westBoundingCoordinate>-72.22</westBoundingCoordinate>
           <eastBoundingCoordinate>-72.22</eastBoundingCoordinate>
@@ -90,9 +90,27 @@
           <southBoundingCoordinate>+42.48</southBoundingCoordinate>
         </boundingCoordinates>
       </geographicCoverage>
-      <!-- For testing purposes, do not remove. This geometry is a polygon. -->
+      <!-- For testing purposes, do not remove. -->
       <geographicCoverage>
-        <geographicDescription>Polygon</geographicDescription>
+        <geographicDescription>Polygon with exlusion ring on land and ocean.</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-125</westBoundingCoordinate>
+          <eastBoundingCoordinate>-119.453</eastBoundingCoordinate>
+          <northBoundingCoordinate>40 </northBoundingCoordinate>
+          <southBoundingCoordinate>35.0</southBoundingCoordinate>
+        </boundingCoordinates>
+        <datasetGPolygon>
+          <datasetGPolygonOuterGRing>
+            <gRing>-119.453,35.0 -125,37.5555 -122,40 -119.453,35.0</gRing>
+          </datasetGPolygonOuterGRing>
+          <datasetGPolygonExclusionGRing>
+            <gRing>-120.453,36.0 -124,37.5555 -122,39 -120.453,36.0</gRing>
+          </datasetGPolygonExclusionGRing>
+        </datasetGPolygon>
+      </geographicCoverage>
+      <!-- For testing purposes, do not remove. -->
+      <geographicCoverage>
+        <geographicDescription>Polygon on land and ocean.</geographicDescription>
         <boundingCoordinates>
           <westBoundingCoordinate>-72.22</westBoundingCoordinate>
           <eastBoundingCoordinate>-72.21</eastBoundingCoordinate>
@@ -103,10 +121,27 @@
           <datasetGPolygonOuterGRing>
             <gRing>-119.453,35.0 -125,37.5555 -122,40 -119.453,35.0</gRing>
           </datasetGPolygonOuterGRing>
-          <datasetGPolygonExclusionGRing>
-            <gRing>-120.453,36.0 -124,37.5555 -122,39 -120.453,36.0</gRing>
-          </datasetGPolygonExclusionGRing>
         </datasetGPolygon>
+      </geographicCoverage>
+      <!-- For testing purposes, do not remove. -->
+      <geographicCoverage>
+        <geographicDescription>Point location on ocean.</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-122.760</westBoundingCoordinate>
+          <eastBoundingCoordinate>-122.760</eastBoundingCoordinate>
+          <northBoundingCoordinate>+37.774</northBoundingCoordinate>
+          <southBoundingCoordinate>+37.774</southBoundingCoordinate>
+        </boundingCoordinates>
+      </geographicCoverage>
+      <!-- For testing purposes, do not remove. -->
+      <geographicCoverage>
+        <geographicDescription>Point location on lake.</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-87.107</westBoundingCoordinate>
+          <eastBoundingCoordinate>-87.107</eastBoundingCoordinate>
+          <northBoundingCoordinate>+43.618</northBoundingCoordinate>
+          <southBoundingCoordinate>+43.618</southBoundingCoordinate>
+        </boundingCoordinates>
       </geographicCoverage>
       <temporalCoverage>
         <rangeOfDates>
