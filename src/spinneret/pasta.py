@@ -1,5 +1,6 @@
 """PASTA (EDI repository) related operations"""
 import requests
+import os
 from lxml import etree
 from io import BytesIO
 from spinneret.utilities import user_agent
@@ -57,7 +58,7 @@ def list_data_package_revisions(scope, identifier, filter='newest'):
     list
         Data package revision(s)
     """
-    url = 'https://pasta.lternet.edu/package/eml/' + scope + '/' + identifier
+    url = os.path.join('https://pasta.lternet.edu/package/eml', scope, identifier)
     if filter is not None:
         url = url + '?filter=' + filter
     r = requests.get(url, headers=user_agent())
@@ -85,11 +86,11 @@ def read_metadata(scope, identifier, revision=None, filter='newest'):
     EML metadata
         As an lxml.etree._ElementTree object.
     """
-    url = 'https://pasta.lternet.edu/package/metadata/eml/' + scope + '/' + identifier
+    url = os.path.join('https://pasta.lternet.edu/package/metadata/eml/', scope, identifier)
     if revision is not None:
-        url = url + '/' + revision
+        url = os.path.join(url, revision)
     if filter is not None:
-        url = url + '/' + filter
+        url = os.path.join(url, filter)
     r = requests.get(url, headers=user_agent())
     eml = etree.parse(BytesIO(r.content))
     return eml

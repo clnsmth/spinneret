@@ -38,8 +38,37 @@ def _json_extract(obj, key):
                 extract(item, arr, key)
         return arr
 
+    # TODO Return none if the key is absent
     values = extract(obj, arr, key)
     return values
+
+
+class Response:
+
+    def __init__(self, json):
+        self.json = json
+
+    def get_attributes(self, attributes):
+        """Parse attributes of identify function's response
+
+        Parameters
+        ----------
+        json : dict
+            A dictionary of the JSON response from the identify operation.
+        attributes : list
+            A list of attributes to extract from the JSON response. These are
+            defined in the map service's layer's definition.
+
+        Returns
+        -------
+        res : dict
+            A dictionary of the requested attributes and their values.
+
+        """
+        res = {}
+        for a in attributes:
+            res[a] = _json_extract(self.json, a)
+        return res
 
 
 def identify(geometry=str, geometry_type=str, map_server=str):
@@ -65,11 +94,11 @@ def identify(geometry=str, geometry_type=str, map_server=str):
 
     Examples
     --------
-    >>> identify(
-    ...     geometry='{"x":-122.5,"y":37.5,"spatialReference":{"wkid":4326}}',
-    ...     geometry_type='esriGeometryPoint',
-    ...     map_server='wte'
-    ... )
+    # >>> identify(
+    # ...     geometry='{"x":-122.5,"y":37.5,"spatialReference":{"wkid":4326}}',
+    # ...     geometry_type='esriGeometryPoint',
+    # ...     map_server='wte'
+    # ... )
     """
     base = (
         "https://rmgsc.cr.usgs.gov/arcgis/rest/services/"
@@ -85,57 +114,10 @@ def identify(geometry=str, geometry_type=str, map_server=str):
         "imageDisplay": "600,550,96",
     }
     r = requests.get(base, params=payload, timeout=5, headers=user_agent())
-    return r.json()
+    return Response(r.json())
 
 
-def parse_attributes(json, attributes):
-    """Parse attributes of identify function's response
-
-    Parameters
-    ----------
-    json : dict
-        A dictionary of the JSON response from the identify operation.
-    attributes : list
-        A list of attributes to extract from the JSON response. These are
-        defined in the map service's layer's definition.
-
-    Returns
-    -------
-    res : dict
-        A dictionary of the requested attributes and their values.
-
-    Examples
-    --------
-    >>> parse_attributes(
-    ...     json={
-    ...         'displayFieldName': 'NAME',
-    ...         'fieldAliases': {
-    ...             'OBJECTID': 'OBJECTID',
-    ...             'NAME': 'NAME',
-    ...             'AREA': 'AREA',
-    ...             'PERIMETER': 'PERIMETER',
-    ...             'WTE_ID': 'WTE_ID',
-    ...             'WTE_NAME': 'WTE_NAME',
-    ...             'WTE_TYPE': 'WTE_TYPE',
-    ...             'WTE_SUBTYPE': 'WTE_SUBTYPE',
-    ...             'WTE_SUBTYPE2': 'WTE_SUBTYPE2'
-    ...         },
-    ...         'geometryType': 'esriGeometryPolygon',
-    ...         'spatialReference': {
-    ...             'wkid': 4326,
-    ...             'latestWkid': 4326
-    ...         }
-    ...      },
-    ...      attributes=['WTE_NAME', 'WTE_TYPE']
-    ... )
-    """
-    res = {}
-    for a in attributes:
-        res[a] = _json_extract(json, a)
-    return res
-
-
-def convert_geographic_coverage(eml_dir, output_dir):
+def eml_to_wte_pkl(eml_dir, output_dir):
     """Convert geographic coverages of EML to WTE ecosystems and write to
     pickle file
 
@@ -150,150 +132,151 @@ def convert_geographic_coverage(eml_dir, output_dir):
     -------
     None
 
+    Notes
+    -----
+    An empty pickle file indicates no geographic coverage was found. The
+    presence of a pickle file in the `output_dir` indicates the input file was
+    processed.
+
     Examples
     --------
-    >>> convert_geographic_coverage(
-    ...     eml_dir='data/eml/',
-    ...     output_dir='data/pkl/'
-    ... )
+    # >>> eml_to_wte_pkl(
+    # ...     eml_dir='data/eml/',
+    # ...     output_dir='data/pkl/'
+    # ... )
     """
     files = glob.glob(eml_dir + "*.xml")
     for file in files:
         res = []
         print(file)
-        pkgid = os.path.splitext(os.path.basename(file))[0]
-        geocov = get_geographic_coverage(file)
-        if geocov is None:
-            continue  # TODO return "no geographic coverage"
-        for g in geocov:
+        fname = os.path.splitext(os.path.basename(file))[0]
+        gc = get_geographic_coverage(file)
+        if gc is None:
+            with open(output_dir + fname + ".pkl", "wb") as f:
+                pickle.dump(res, f)
+        for g in gc:
             if g.geom_type() == "envelope" or g.geom_type() == "polygon":
-                continue
-            geom = g.to_esri_geometry()
+                # TODO This block of code can be removed once support is added
+                #  for polygons and envelopes.
+                with open(output_dir + fname + ".pkl", "wb") as f:
+                    pickle.dump(res, f)
             try:
                 r = identify(
-                    geometry=geom,
+                    geometry=g.to_esri_geometry(),
                     geometry_type=g.geom_type(schema="esri"),
-                    map_server="wte",
+                    map_server="wte"
                 )
             except Exception as e:
                 print(e)
-                r = None  # TODO return error message for logging
-            attributes = parse_attributes(
-                attributes=["Landforms", "Landcover", "Climate_Re"], json=r
+                r = None
+            # TODO Get water attributes
+            a = r.get_attributes(
+                attributes=["Landforms", "Landcover", "Climate_Re"]
             )
-            attributes["packageId"] = pkgid
-            attributes["geographicDescription"] = g.geographicDescription()
-            res.append(attributes)
-        with open(output_dir + pkgid + ".pkl", "wb") as f:
+            a["file"] = fname
+            a["geographicDescription"] = g.description()
+            res.append(a)
+        with open(os.path.join(output_dir, fname + ".pkl"), "wb") as f:
             pickle.dump(res, f)
 
 
-def combine_pkl_files(pkl_dir, output_dir):
-    """Combine pickle files into a single dataframe and write to tsv file
+def wte_pkl_to_df(pkl_dir):
+    """Combine WTE pickle files into a single dataframe
 
     Parameters
     ----------
     pkl_dir : str
         Path to directory containing pickle files
-    output_dir : str
-        Path to directory to write output file
 
     Returns
     -------
-    None
+    df : pandas.DataFrame
+        A dataframe of the WTE ecosystems
 
     Examples
     --------
-    >>> combine_pkl_files(
-    ...     pkl_dir='data/pkl/',
-    ...     output_dir='data/tsv/'
-    ... )
+    # >>> df = wte_pkl_to_wte_df(pkl_dir='data/pkl/')
     """
     files = glob.glob(pkl_dir + "*.pkl")
     res = []
     for file in files:
         with open(file, "rb") as f:
             res.append(pickle.load(f))
-    res_flat = [
-        item for sublist in res for item in sublist
-    ]  # FIXME pop() _json_extract() step in parse attributes
-    # TODO cleanup code below
+    res_flat = [item for sublist in res for item in sublist]
+    # Attributes of an identify operation may list multiple values. These
+    # values are stored as a list, which need to be unnested into separate
+    # rows.
     df = pd.DataFrame(res_flat)
     df = df.explode("Landforms")
     df = df.explode("Landcover")
     df = df.explode("Climate_Re")
-    # Split packageId on first '.' to get datasetId
-    df["datasetId"] = df["packageId"].str.split(".", expand=True)[0]
-    df["datasetNum"] = (
-        df["packageId"].str.split(".", expand=True)[1]
+    # Sorting datasets by a packageId's scope and identifier is provides an
+    # intuitive ordering for browsing by information managers.
+    df["scope"] = df["file"].str.split(".", expand=True)[0]
+    df["identifier"] = (
+        df["file"].str.split(".", expand=True)[1]
         + "."
-        + df["packageId"].str.split(".", expand=True)[2]
+        + df["file"].str.split(".", expand=True)[2]
     )
-    df["datasetNum"] = df["datasetNum"].astype(float)
-    # Sort by datasetId and datasetNum
-    df = df.sort_values(by=["datasetId", "datasetNum"])
-    # Drop last 3 columns of dataframe
-    df = df.iloc[:, :-2]
-    # Move packageId to front of dataframe
-    cols = df.columns.tolist()
-    cols = ["packageId"] + cols[:3] + cols[4:]
-    df = df[cols]
-    # Write df to tsv
-    df.to_csv(output_dir + "globalelu.tsv", sep="\t", index=False)
+    df["identifier"] = df["identifier"].astype(float)
+    df = df.sort_values(by=["scope", "identifier"])
+    df = df[["Landforms", "Landcover", "Climate_Re", "file", "geographicDescription"]]
+    df = df.rename(columns={"Climate_Re": "Climate_Region"})
     return df
 
 
-def summarize_wte_results(wte_results):
-    """Summarize WTE results"""
-    df = pd.read_csv(wte_results, sep="\t")
-    cols = [
-        "packageId",
-        "Landforms",
-        "Landcover",
-        "Climate_Region",
-        "geographicDescription",
-    ]
-    # Summarize gaps in data
-    df_not_empty = df[cols].dropna(
-        subset=["Landforms", "Landcover", "Climate_Region"]
-    )
-    total_rows_not_empty = df_not_empty.shape[0]
-    total_rows = df.shape[0]
-    percent_empty = ((total_rows - total_rows_not_empty) / total_rows) * 100
-    print(f"{percent_empty:.2f}% of rows are empty")
+def summarize_wte_results(wte_df):
+    """Summarize WTE results
+
+    Parameters
+    ----------
+    wte_df : pandas.DataFrame
+        A dataframe of the WTE ecosystems created by `wte_pkl_to_df`
+
+    Returns
+    -------
+    res : dict
+        A dictionary of the WTE results
+
+    Examples
+    --------
+    # >>> df = globalelu.wte_pkl_to_df(pkl_dir="src/spinneret/data/pkl/")
+    # >>> res = summarize_wte_results(df)
+    """
+    res = {}
+    cols = wte_df.columns.tolist()
+    cols_eco = ["Landforms", "Landcover", "Climate_Region"]
+    # Characterize success rate of the identify operation
+    df = wte_df[cols].dropna(subset=cols_eco)
+    res["percent_success"] = (df.shape[0] / wte_df.shape[0]) * 100
     # Summarize by unique combinations of Landforms, Landcover, Climate_Region
-    cols_groups = ["Landforms", "Landcover", "Climate_Region"]
-    df_not_empty["count"] = 1
-    df_grouped = df_not_empty.groupby(cols_groups).count().reset_index()
-    df_grouped = df_grouped.sort_values(by="count", ascending=False)
-    # Summary plots of the data
-    df_not_empty["Landforms"].value_counts().plot(
-        kind="bar",
-        title="Landforms",
-        xlabel="Landforms",
-        ylabel="Number of geographic coverages (sampling sites)",
-    )
-    df_not_empty["Landcover"].value_counts().plot(
-        kind="bar",
-        title="Landcover",
-        xlabel="Landcover",
-        ylabel="Number of geographic coverages (sampling sites)",
-    )
-    df_not_empty["Climate_Region"].value_counts().plot(
-        kind="bar",
-        title="Climate_Region",
-        xlabel="Climate_Region",
-        ylabel="Number of geographic coverages (sampling sites)",
-    )
+    for col in cols_eco:
+        df["count"] = 1
+        df_grouped = df.groupby(col).count().reset_index()
+        df_grouped = df_grouped.sort_values(by="count", ascending=False)
+        res[col] = df_grouped.set_index(col).to_dict()["count"]
+    return res
+
+
+
+
 
 
 if __name__ == "__main__":
-    # res = convert_geographic_coverage(
-    #     eml_dir='/Users/csmith/Data/edi/eml/',
-    #     output_dir='/Users/csmith/Data/edi/tests/'
+
+    print('42')
+
+    # Run identify() on all EML files in eml_dir and write to pickle files
+    # res = eml_to_wte_pkl(
+    #     eml_dir="/Users/csmith/Data/edi/eml/",
+    #     output_dir="/Users/csmith/Data/edi/pkl/"
     # )
 
-    res = combine_pkl_files(
-        pkl_dir="/Users/csmith/Data/edi/tests/",
-        output_dir="/Users/csmith/Data/edi/"
-    )
+    # # Combine pickle files into a single dataframe and write to tsv file
+    # df = wte_pkl_to_df(
+    #     pkl_dir="/Users/csmith/Data/edi/tests/",
+    #     output_dir="/Users/csmith/Data/edi/"
+    # )
+
+    # Write df to tsv
+    # df.to_csv(output_dir + "globalelu.tsv", sep="\t", index=False)

@@ -19,8 +19,9 @@ def get_geographic_coverage(eml):
     Examples
     --------
     >>> from spinneret import eml
+    >>>
     >>> res = eml.get_geographic_coverage(
-    ...     eml="../src/spinneret/data/eml/edi.1.1.xml"
+    ...     eml="src/spinneret/data/eml/edi.1.1.xml"
     ... )
     """
     xml = etree.parse(eml)
@@ -39,37 +40,40 @@ class GeographicCoverage:
     def __init__(self, gc):
         self.gc = gc
 
-    def geographicDescription(self):
+    def description(self):
         """Get geographicDescription element from geographicCoverage
 
         Returns
         -------
-        str : geographicDescription
+        str : description
             geographicDescription element
 
         Examples
         --------
         >>> from spinneret import eml
         >>> res = eml.get_geographic_coverage(
-        ...     eml="../src/spinneret/data/eml/edi.1.1.xml"
+        ...     eml="src/spinneret/data/eml/edi.1.1.xml"
         ... )
-        >>> res[0].geographicDescription()
+        >>> res[0].description()
         """
-        return self.gc.findtext(".//geographicDescription")
+        try:
+            return self.gc.findtext(".//geographicDescription")
+        except TypeError:
+            return None
 
-    def westBoundingCoordinate(self):
+    def west(self):
         """Get westBoundingCoordinate element from geographicCoverage
 
         Returns
         -------
-        float : westBoundingCoordinate
+        float : west
             westBoundingCoordinate element
 
         Examples
         --------
         >>> from spinneret import eml
         >>> res = eml.get_geographic_coverage(
-        ...     eml="../src/spinneret/data/eml/edi.1.1.xml"
+        ...     eml="src/spinneret/data/eml/edi.1.1.xml"
         ... )
         >>> res[0].westBoundingCoordinate()
         """
@@ -78,106 +82,106 @@ class GeographicCoverage:
         except TypeError:
             return None
 
-    def eastBoundingCoordinate(self):
+    def east(self):
         """Get eastBoundingCoordinate element from geographicCoverage
 
         Returns
         -------
-        float : eastBoundingCoordinate
+        float : east
             eastBoundingCoordinate element
 
         Examples
         --------
         >>> from spinneret import eml
         >>> res = eml.get_geographic_coverage(
-        ...     eml="../src/spinneret/data/eml/edi.1.1.xml"
+        ...     eml="src/spinneret/data/eml/edi.1.1.xml"
         ... )
-        >>> res[0].eastBoundingCoordinate()
+        >>> res[0].east()
         """
         try:
             return float(self.gc.findtext(".//eastBoundingCoordinate"))
         except TypeError:
             return None
 
-    def northBoundingCoordinate(self):
+    def north(self):
         """Get northBoundingCoordinate element from geographicCoverage
 
         Returns
         -------
-        float : northBoundingCoordinate
+        float : north
             northBoundingCoordinate element
 
         Examples
         --------
         >>> from spinneret import eml
         >>> res = eml.get_geographic_coverage(
-        ...     eml="../src/spinneret/data/eml/edi.1.1.xml"
+        ...     eml="src/spinneret/data/eml/edi.1.1.xml"
         ... )
-        >>> res[0].northBoundingCoordinate()
+        >>> res[0].north()
         """
         try:
             return float(self.gc.findtext(".//northBoundingCoordinate"))
         except TypeError:
             return None
 
-    def southBoundingCoordinate(self):
+    def south(self):
         """Get southBoundingCoordinate element from geographicCoverage
 
         Returns
         -------
-        float : southBoundingCoordinate
+        float : south
             southBoundingCoordinate element
 
         Examples
         --------
         >>> from spinneret import eml
         >>> res = eml.get_geographic_coverage(
-        ...     eml="../src/spinneret/data/eml/edi.1.1.xml"
+        ...     eml="src/spinneret/data/eml/edi.1.1.xml"
         ... )
-        >>> res[0].southBoundingCoordinate()
+        >>> res[0].south()
         """
         try:
             return float(self.gc.findtext(".//southBoundingCoordinate"))
         except TypeError:
             return None
 
-    def datasetGPolygonOuterGRing(self):
+    def outer_gring(self):
         """Get datasetGPolygonOuterGRing/gRing element from geographicCoverage
 
         Returns
         -------
-        str : datasetGPolygonOuterGRing/gRing
+        str : outer_gring
             datasetGPolygonOuterGRing/gRing element
 
         Examples
         --------
         >>> from spinneret import eml
         >>> res = eml.get_geographic_coverage(
-        ...     eml="../src/spinneret/data/eml/edi.1.1.xml"
+        ...     eml="src/spinneret/data/eml/edi.1.1.xml"
         ... )
-        >>> res[0].datasetGPolygonOuterGRing()
+        >>> res[0].outer_gring()
         """
         try:
             return self.gc.findtext(".//datasetGPolygonOuterGRing/gRing")
         except TypeError:
             return None
 
-    def datasetGPolygonExclusionGRing(self):
+    def exclusion_gring(self):
         """Get datasetGPolygonExclusionGRing/gRing element from
         geographicCoverage
 
         Returns
         -------
-        str : datasetGPolygonExclusionGRing/gRing
+        str : exclusion_gring
             datasetGPolygonExclusionGRing/gRing element
 
         Examples
         --------
         >>> from spinneret import eml
         >>> res = eml.get_geographic_coverage(
-        ...     eml="../src/spinneret/data/eml/edi.1.1.xml"
+        ...     eml="src/spinneret/data/eml/edi.1.1.xml"
         ... )
-        >>> res[0].datasetGPolygonExclusionGRing()
+        >>> res[0].exclusion_gring()
         """
         try:
             return self.gc.findtext(".//datasetGPolygonExclusionGRing/gRing")
@@ -205,8 +209,8 @@ class GeographicCoverage:
             return "esriGeometryPolygon"
         if self.gc.find(".//boundingCoordinates") is not None:
             if (
-                self.westBoundingCoordinate() == self.eastBoundingCoordinate()
-                and self.northBoundingCoordinate() == self.southBoundingCoordinate()
+                self.west() == self.east()
+                and self.north() == self.south()
             ):
                 if schema == "eml":
                     return "point"
@@ -235,7 +239,7 @@ class GeographicCoverage:
         --------
         >>> from spinneret import eml
         >>> res = eml.get_geographic_coverage(
-        ...     eml="../src/spinneret/data/eml/edi.1.1.xml"
+        ...     eml="src/spinneret/data/eml/edi.1.1.xml"
         ... )
         >>> res[0].to_esri_geometry()
         >>> res[1].to_esri_geometry()
@@ -266,8 +270,8 @@ class GeographicCoverage:
         until needed.
         """
         res = {
-            "x": self.westBoundingCoordinate(),
-            "y": self.northBoundingCoordinate(),
+            "x": self.west(),
+            "y": self.north(),
             "spatialReference": {"wkid": 4326},
         }
         return json.dumps(res)
@@ -286,10 +290,10 @@ class GeographicCoverage:
         notes the coordinates are meant to convey general information.
         """
         res = {
-            "xmin": self.westBoundingCoordinate(),
-            "ymin": self.southBoundingCoordinate(),
-            "xmax": self.eastBoundingCoordinate(),
-            "ymax": self.northBoundingCoordinate(),
+            "xmin": self.west(),
+            "ymin": self.south(),
+            "xmax": self.east(),
+            "ymax": self.north(),
             "spatialReference": {"wkid": 4326}
         }
         return json.dumps(res)
@@ -326,11 +330,11 @@ class GeographicCoverage:
             #  inner ring is oriented counter-clockwise
             return ring
 
-        if self.datasetGPolygonOuterGRing() is not None:
-            ring = _format_ring(self.datasetGPolygonOuterGRing())
+        if self.outer_gring() is not None:
+            ring = _format_ring(self.outer_gring())
             res = {"rings": [ring], "spatialReference": {"wkid": 4326}}
-            if self.datasetGPolygonExclusionGRing() is not None:
-                ring = _format_ring(self.datasetGPolygonExclusionGRing())
+            if self.exclusion_gring() is not None:
+                ring = _format_ring(self.exclusion_gring())
                 res["rings"].append(ring)
             return json.dumps(res)
         return None
