@@ -44,6 +44,13 @@ def _json_extract(obj, key):
 
 
 class Response:
+    """A class to parse the response from the identify operation
+
+    Parameters
+    ----------
+    json : dict
+        A dictionary of the JSON response from the identify operation.
+    """
 
     def __init__(self, json):
         self.json = json
