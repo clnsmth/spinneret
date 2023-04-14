@@ -1,10 +1,10 @@
 """Test the globalelu module."""
-import pytest
 import tempfile
 import os
 import glob
-import spinneret.globalelu as globalelu
-import spinneret.eml as eml
+import pytest
+from spinneret import globalelu
+from spinneret import eml
 
 
 @pytest.fixture
@@ -23,10 +23,7 @@ def test_eml_to_wte_pkl():
     fpaths_in = glob.glob("src/spinneret/data/eml/" + "*.xml")
     fnames_in = [os.path.splitext(os.path.basename(f))[0] for f in fpaths_in]
     with tempfile.TemporaryDirectory() as tmpdir:
-        globalelu.eml_to_wte_pkl(
-            eml_dir="src/spinneret/data/eml/",
-            output_dir=tmpdir
-        )
+        globalelu.eml_to_wte_pkl(eml_dir="src/spinneret/data/eml/", output_dir=tmpdir)
         fpaths_out = os.listdir(tmpdir)
         for f in fnames_in:
             assert f + ".pkl" in fpaths_out
@@ -79,23 +76,29 @@ def test_wte_pkl_to_df():
     assert "file" in df.columns
     for col in ["Landforms", "Landcover", "Climate_Region"]:
         assert col in df.columns
-        assert df[col].apply(lambda x: type(x) is list).sum() == 0
+        assert df[col].apply(lambda x: isinstance(x, list)).sum() == 0
 
 
 def test_summarize_wte_results():
+    """Test the summarize_wte_results() function.
+
+    The summarize_wte_results() function should return a dictionary of
+    summary statistics for the WTE results. The dictionary should contain the
+    expected keys.
+    """
     df = globalelu.wte_pkl_to_df(pkl_dir="src/spinneret/data/pkl/")
     res = globalelu.summarize_wte_results(wte_df=df)
-    assert type(res) is dict
+    assert isinstance(res, dict)
     expected_keys = {
+        "Successful matches (percent)",
+        "Terrestrial ecosystems (number)",
+        "Aquatic ecosystems (number)",
+        "Unsupported geometries (number)",
+        "Out of bounds geometries (number)",
+        "No geographic coverage (number)",
         "Landforms",
         "Landcover",
         "Climate_Region",
-        "percent_success",
-        "aquatic_ecosystem",
-        "terrestrial_ecosystem",
-        "no_geographic_coverage",
-        "out_of_bounds",
-        "unsupported_geometry"
     }
     assert set(res.keys()) == expected_keys
 
@@ -110,14 +113,14 @@ def test_get_attributes(geocov):
     r = globalelu.identify(
         geometry=geocov[0].to_esri_geometry(),
         geometry_type=geocov[0].geom_type(schema="esri"),
-        map_server="wte"
+        map_server="wte",
     )
     attributes = ["Landforms", "Landcover", "Climate_Re"]
     res = r.get_attributes(attributes)
-    assert type(res) is dict
+    assert isinstance(res, dict)
     for a in attributes:
-        assert a in res.keys()
+        assert a in res
         assert len(res[a]) > 0
     res = r.get_attributes(["Not a valid attribute"])
-    assert "Not a valid attribute" in res.keys()
+    assert "Not a valid attribute" in res
     assert len(res["Not a valid attribute"]) == 0

@@ -38,7 +38,6 @@ def _json_extract(obj, key):
                 extract(item, arr, key)
         return arr
 
-    # TODO Return none if the key is absent
     values = extract(obj, arr, key)
     return values
 
@@ -85,13 +84,12 @@ class Response:
         comments : str
             A string of comments about the response.
         """
-        pv = _json_extract(self.json, 'Pixel Value')
+        pv = _json_extract(self.json, "Pixel Value")
         if len(pv) == 0:  # pv == []
             return "Is unknown ecosystem (outside the WTE area)."
-        elif len(pv) > 0 and pv[0] == "NoData":
+        if len(pv) > 0 and pv[0] == "NoData":
             return "Is an aquatic ecosystem."
-        else:
-            return "Is a terrestrial ecosystem."
+        return "Is a terrestrial ecosystem."
 
 
 def identify(geometry=str, geometry_type=str, map_server=str):
@@ -169,7 +167,7 @@ def eml_to_wte_pkl(eml_dir, output_dir):
     # ... )
     """
     files = glob.glob(eml_dir + "*.xml")
-    if files == []:
+    if not files:
         raise FileNotFoundError("No EML files found")
     for file in files:
         res = []
@@ -195,19 +193,21 @@ def eml_to_wte_pkl(eml_dir, output_dir):
                     r = identify(
                         geometry=g.to_esri_geometry(),
                         geometry_type=g.geom_type(schema="esri"),
-                        map_server="wte"
+                        map_server="wte",
                     )
-                except Exception as e:
-                    print(e)
+                except ConnectionError:
                     r = None
-                a = r.get_attributes(
-                    attributes=["Landforms", "Landcover", "Climate_Re"]
-                )
-                a["file"] = fname
-                a["geometry"] = g.geom_type()
-                a["geographicDescription"] = g.description()
-                a["comments"] = r.get_comments()
-                res.append(a)
+                if r is not None:
+                    a = r.get_attributes(
+                        attributes=["Landforms", "Landcover", "Climate_Re"]
+                    )
+                    a["file"] = fname
+                    a["geometry"] = g.geom_type()
+                    a["geographicDescription"] = g.description()
+                    a["comments"] = r.get_comments()
+                    res.append(a)
+                else:
+                    continue
             else:  # Geographic coverage is an envelope or polygon
                 a = {}
                 a["Landforms"] = []
@@ -216,7 +216,7 @@ def eml_to_wte_pkl(eml_dir, output_dir):
                 a["file"] = fname
                 a["geometry"] = g.geom_type()
                 a["geographicDescription"] = g.description()
-                a["comments"] = 'Envelopes and polygons are not supported'
+                a["comments"] = "Envelopes and polygons are not supported"
                 res.append(a)
         with open(os.path.join(output_dir, fname + ".pkl"), "wb") as f:
             pickle.dump(res, f)
@@ -240,7 +240,7 @@ def wte_pkl_to_df(pkl_dir):
     # >>> df = wte_pkl_to_wte_df(pkl_dir='data/pkl/')
     """
     files = glob.glob(pkl_dir + "*.pkl")
-    if files == []:
+    if not files:
         raise FileNotFoundError("No pickle files found")
     res = []
     for file in files:
@@ -264,7 +264,16 @@ def wte_pkl_to_df(pkl_dir):
     )
     df["identifier"] = df["identifier"].astype(float)
     df = df.sort_values(by=["scope", "identifier"])
-    df = df[["Landforms", "Landcover", "Climate_Re", "file", "geographicDescription", "comments"]]
+    df = df[
+        [
+            "Landforms",
+            "Landcover",
+            "Climate_Re",
+            "file",
+            "geographicDescription",
+            "comments",
+        ]
+    ]
     df = df.rename(columns={"Climate_Re": "Climate_Region"})
     return df
 
@@ -290,26 +299,35 @@ def summarize_wte_results(wte_df):
     res = {}
     cols = wte_df.columns.tolist()
     cols_eco = ["Landforms", "Landcover", "Climate_Region"]
-    # Characterize success rate of the identify operation
+    # Match success rate of the identify operation
     df = wte_df[cols].dropna(subset=cols_eco)
-    res["percent_success"] = (df.shape[0] / wte_df.shape[0]) * 100
+    res["Successful matches (percent)"] = (df.shape[0] / wte_df.shape[0]) * 100
+    other_metrics = {
+        "Terrestrial ecosystems (number)": "Is a terrestrial ecosystem.",
+        "Aquatic ecosystems (number)": "Is an aquatic ecosystem.",
+        "Unsupported geometries (number)": "Envelopes and polygons are not supported",
+        "Out of bounds geometries (number)": "Is unknown ecosystem (outside the WTE area).",
+        "No geographic coverage (number)": "No geographic coverage found",
+    }
+    for key, value in other_metrics.items():
+        i = wte_df["comments"] == value
+        res[key] = wte_df[i].shape[0]
+
     # List the number of aquatic ecosystems
-    df_aquatic = wte_df[wte_df["comments"] == "Is an aquatic ecosystem."]
-    res["aquatic_ecosystem"] = df_aquatic.shape[0]
-    # List the number of unknown ecosystems
-    df_unknown = wte_df[wte_df["comments"] == "Is unknown ecosystem (outside the WTE area)."]
-    res["out_of_bounds"] = df_unknown.shape[0]
-    # List the number of terrestrial ecosystems
-    df_terrestrial = wte_df[wte_df["comments"] == "Is a terrestrial ecosystem."]
-    res["terrestrial_ecosystem"] = df_terrestrial.shape[0]
-    # List the number of no geographic coverage found
-    df_nogeocov = wte_df[
-        wte_df["comments"] == "No geographic coverage found"]
-    res["no_geographic_coverage"] = df_nogeocov.shape[0]
+    # i = wte_df["comments"] == "Is an aquatic ecosystem."
+    # res["aquatic_ecosystem"] = wte_df[i].shape[0]
+    # # List the number of unknown ecosystems
+    # i = wte_df["comments"] == "Is unknown ecosystem (outside the WTE area)."
+    # res["out_of_bounds"] = wte_df[i].shape[0]
+    # # List the number of terrestrial ecosystems
+    # i = wte_df["comments"] == "Is a terrestrial ecosystem."
+    # res["terrestrial_ecosystem"] = wte_df[i].shape[0]
+    # # List the number of no geographic coverage found
+    # i = wte_df["comments"] == "No geographic coverage found"
+    # res["no_geographic_coverage"] = wte_df[i].shape[0]
     # List the number of unsupported geometries
-    df_nogeom = wte_df[
-        wte_df["comments"] == "Envelopes and polygons are not supported"]
-    res["unsupported_geometry"] = df_nogeom.shape[0]
+    # i = wte_df["comments"] == "Envelopes and polygons are not supported"
+    # res["unsupported_geometry"] = wte_df[i].shape[0]
     # Summarize by unique combinations of Landforms, Landcover, Climate_Region
     for col in cols_eco:
         df["count"] = 1
@@ -319,13 +337,9 @@ def summarize_wte_results(wte_df):
     return res
 
 
-
-
-
-
 if __name__ == "__main__":
 
-    print('42')
+    print("42")
 
     # Transform EML to WTE ecosystems and write to pickle file
     # res = eml_to_wte_pkl(

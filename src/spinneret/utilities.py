@@ -11,5 +11,5 @@ def user_agent():
     dict
         User agent
     """
-    header = {'user-agent': 'spinneret Python package'}
+    header = {"user-agent": "spinneret Python package"}
     return header

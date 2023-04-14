@@ -1,8 +1,8 @@
 """PASTA (EDI repository) related operations"""
-import requests
 import os
-from lxml import etree
 from io import BytesIO
+import requests
+from lxml import etree
 from spinneret.utilities import user_agent
 
 
@@ -16,7 +16,8 @@ def list_data_package_scopes():
     """
     r = requests.get(
         url="https://pasta.lternet.edu/package/eml",
-        headers=user_agent()
+        headers=user_agent(),
+        timeout=10
     )
     scopes = str.splitlines(r.text)
     return scopes
@@ -35,13 +36,13 @@ def list_data_package_identifiers(scope):
     list
         Data package identifiers of `scope`
     """
-    url = 'https://pasta.lternet.edu/package/eml/' + scope
-    r = requests.get(url, headers=user_agent())
+    url = "https://pasta.lternet.edu/package/eml/" + scope
+    r = requests.get(url, headers=user_agent(), timeout=10)
     identifiers = str.splitlines(r.text)
     return identifiers
 
 
-def list_data_package_revisions(scope, identifier, filter='newest'):
+def list_data_package_revisions(scope, identifier, fltr="newest"):
     """List data package revisions
 
     Parameters
@@ -50,7 +51,7 @@ def list_data_package_revisions(scope, identifier, filter='newest'):
         Data package scope
     identifier : int or str
         Data package identifier
-    filter : str
+    fltr : str
         Filter results by "newest", "oldest", or None.
 
     Returns
@@ -58,15 +59,15 @@ def list_data_package_revisions(scope, identifier, filter='newest'):
     list
         Data package revision(s)
     """
-    url = os.path.join('https://pasta.lternet.edu/package/eml', scope, identifier)
-    if filter is not None:
-        url = url + '?filter=' + filter
-    r = requests.get(url, headers=user_agent())
+    url = os.path.join("https://pasta.lternet.edu/package/eml", scope, identifier)
+    if fltr is not None:
+        url = url + "?fltr=" + fltr
+    r = requests.get(url, headers=user_agent(), timeout=10)
     revisions = str.splitlines(r.text)
     return revisions
 
 
-def read_metadata(scope, identifier, revision=None, filter='newest'):
+def read_metadata(scope, identifier, revision=None, fltr="newest"):
     """
     Read EML metadata
 
@@ -78,7 +79,7 @@ def read_metadata(scope, identifier, revision=None, filter='newest'):
         Data package identifier
     revision : int or str
         Data package revision
-    filter : str
+    fltr : str
         Filter results by "newest", "oldest", or None.
 
     Returns
@@ -86,15 +87,17 @@ def read_metadata(scope, identifier, revision=None, filter='newest'):
     EML metadata
         As an lxml.etree._ElementTree object.
     """
-    url = os.path.join('https://pasta.lternet.edu/package/metadata/eml/', scope, identifier)
+    url = os.path.join(
+        "https://pasta.lternet.edu/package/metadata/eml/", scope, identifier
+    )
     if revision is not None:
         url = os.path.join(url, revision)
-    if filter is not None:
-        url = os.path.join(url, filter)
-    r = requests.get(url, headers=user_agent())
+    if fltr is not None:
+        url = os.path.join(url, fltr)
+    r = requests.get(url, headers=user_agent(), timeout=10)
     eml = etree.parse(BytesIO(r.content))
     return eml
 
 
 if __name__ == "__main__":
-    meta = read_metadata('edi', '1')
+    meta = read_metadata("edi", "1")

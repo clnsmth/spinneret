@@ -208,16 +208,17 @@ class GeographicCoverage:
                 return "polygon"
             return "esriGeometryPolygon"
         if self.gc.find(".//boundingCoordinates") is not None:
-            if (
-                self.west() == self.east()
-                and self.north() == self.south()
-            ):
+            if self.west() == self.east() and self.north() == self.south():
                 if schema == "eml":
-                    return "point"
-                return "esriGeometryPoint"
+                    res = "point"
+                else:
+                    res = "esriGeometryPoint"
+                return res
             if schema == "eml":
-                return "envelope"
-            return "esriGeometryEnvelope"
+                res = "envelope"
+            else:
+                res = "esriGeometryEnvelope"
+            return res
         return None
 
     def to_esri_geometry(self):
@@ -294,7 +295,7 @@ class GeographicCoverage:
             "ymin": self.south(),
             "xmax": self.east(),
             "ymax": self.north(),
-            "spatialReference": {"wkid": 4326}
+            "spatialReference": {"wkid": 4326},
         }
         return json.dumps(res)
 
