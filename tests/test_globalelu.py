@@ -32,6 +32,7 @@ def test_eml_to_wte_pkl():
             assert f + ".pkl" in fpaths_out
             assert os.path.getsize(os.path.join(tmpdir, f + ".pkl")) > 0
 
+
 def test_identify(geocov):
     """Test the identify() function.
 
@@ -51,7 +52,7 @@ def test_identify(geocov):
         #  support is added for all geometry types
         if gtype == "esriGeometryPoint":
             assert r is not None
-            if r.get_attributes(["Pixel Value"])["Pixel Value"][0] != 'NoData':
+            if r.get_comments() == "Is a terrestrial ecosystem.":
                 assert len(r.get_attributes(["Landforms"])["Landforms"]) > 0
                 assert len(r.get_attributes(["Landcover"])["Landcover"]) > 0
                 assert len(r.get_attributes(["Climate_Re"])["Climate_Re"]) > 0
@@ -81,10 +82,42 @@ def test_wte_pkl_to_df():
         assert df[col].apply(lambda x: type(x) is list).sum() == 0
 
 
-
 def test_summarize_wte_results():
     df = globalelu.wte_pkl_to_df(pkl_dir="src/spinneret/data/pkl/")
     res = globalelu.summarize_wte_results(wte_df=df)
     assert type(res) is dict
-    expected = set(["Landforms", "Landcover", "Climate_Region", "percent_success"])
-    assert set(res.keys()) == expected
+    expected_keys = {
+        "Landforms",
+        "Landcover",
+        "Climate_Region",
+        "percent_success",
+        "aquatic_ecosystem",
+        "terrestrial_ecosystem",
+        "no_geographic_coverage",
+        "out_of_bounds",
+        "unsupported_geometry"
+    }
+    assert set(res.keys()) == expected_keys
+
+
+def test_get_attributes(geocov):
+    """Test the get_attributes() function.
+
+    The get_attributes() function should return a dictionary of attributes
+    from the response object. The dictionary should contain the requested
+    attributes and return an empty list for attributes that are not present.
+    """
+    r = globalelu.identify(
+        geometry=geocov[0].to_esri_geometry(),
+        geometry_type=geocov[0].geom_type(schema="esri"),
+        map_server="wte"
+    )
+    attributes = ["Landforms", "Landcover", "Climate_Re"]
+    res = r.get_attributes(attributes)
+    assert type(res) is dict
+    for a in attributes:
+        assert a in res.keys()
+        assert len(res[a]) > 0
+    res = r.get_attributes(["Not a valid attribute"])
+    assert "Not a valid attribute" in res.keys()
+    assert len(res["Not a valid attribute"]) == 0

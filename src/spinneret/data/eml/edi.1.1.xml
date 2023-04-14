@@ -143,6 +143,26 @@
           <southBoundingCoordinate>+43.618</southBoundingCoordinate>
         </boundingCoordinates>
       </geographicCoverage>
+      <!-- For testing purposes, do not remove. -->
+      <geographicCoverage>
+        <geographicDescription>Point location outside of map extent.</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-136.937</westBoundingCoordinate>
+          <eastBoundingCoordinate>-136.937</eastBoundingCoordinate>
+          <northBoundingCoordinate>-77.444</northBoundingCoordinate>
+          <southBoundingCoordinate>-77.444</southBoundingCoordinate>
+        </boundingCoordinates>
+      </geographicCoverage>
+      <!-- For testing purposes, do not remove. -->
+      <geographicCoverage>
+        <geographicDescription>Another point location on land.</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-122.688</westBoundingCoordinate>
+          <eastBoundingCoordinate>-122.688</eastBoundingCoordinate>
+          <northBoundingCoordinate>37.913</northBoundingCoordinate>
+          <southBoundingCoordinate>37.913</southBoundingCoordinate>
+        </boundingCoordinates>
+      </geographicCoverage>
       <temporalCoverage>
         <rangeOfDates>
           <beginDate>
