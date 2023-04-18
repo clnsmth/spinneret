@@ -1,30 +1,39 @@
 subject_category	subject_id	subject_label	predicate_id	object_id	object_label	confidence	comment	mapping_justification	mapping_date	creator_id
-WTE:Landform	WTE:plains	plains								
-WTE:Landform	WTE:hills	hills								
-WTE:Landform	WTE:mountains	mountains								
-WTE:Landform	WTE:tablelands	tablelands								
-WTE:Landcover	WTE:Forest	Forest								
-WTE:Landcover	WTE:Shrubland	Shrubland								
-WTE:Landcover	WTE:Grassland	Grassland								
-WTE:Landcover	WTE:Sparsely or Non-vegetated	Sparsely or Non-vegetated								
-WTE:Landcover	WTE:Cropland	Cropland								
-WTE:Landcover	WTE:Snow and Ice	Snow and Ice								
-WTE:Landcover	WTE:Settlement	Settlement								
-WTE:World Climate Region	WTE:Polar Moist	Polar Moist								
-WTE:World Climate Region	WTE:Polar Dry	Polar Dry								
-WTE:World Climate Region	WTE:Polar Desert	Polar Desert								
-WTE:World Climate Region	WTE:Boreal Moist	Boreal Moist								
-WTE:World Climate Region	WTE:Boreal Dry	Boreal Dry								
-WTE:World Climate Region	WTE:Boreal Desert	Boreal Desert								
-WTE:World Climate Region	WTE:Cool Temperate Moist	Cool Temperate Moist								
-WTE:World Climate Region	WTE:Cool Temperate Dry	Cool Temperate Dry								
-WTE:World Climate Region	WTE:Cool Temperate Desert	Cool Temperate Desert								
-WTE:World Climate Region	WTE:Warm Temperate Moist	Warm Temperate Moist								
-WTE:World Climate Region	WTE:Warm Temperate Dry	Warm Temperate Dry								
-WTE:World Climate Region	WTE:Warm Temperate Desert	Warm Temperate Desert								
-WTE:World Climate Region	WTE:Subtropical Moist	Subtropical Moist								
-WTE:World Climate Region	WTE:Subtropical Dry	Subtropical Dry								
-WTE:World Climate Region	WTE:Subtropical Desert	Subtropical Desert								
-WTE:World Climate Region	WTE:Tropical Moist	Tropical Moist								
-WTE:World Climate Region	WTE:Tropical Dry	Tropical Dry								
-WTE:World Climate Region	WTE:Tropical Desert	Tropical Desert								
+WTE:Landform	WTE:plains	plains	skos:exactMatch	ENVO:00000086	plain	1	Definitions match.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:Landform	WTE:hills	hills	skos:closeMatch	ENVO:00000083	hill	0.75	ENVO's hill classification does not have the same quantitative definition as WTE hills but does form a close qualitative match.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:Landform	WTE:mountains	mountains	skos:closeMatch	ENVO:00000081	mountain	0.75	ENVO's mountain classification does not have the same quantitative definition as WTE mountains but does form a close qualitative match.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:Landform	WTE:tablelands	tablelands	skos:exactMatch	ENVO:00000182	plateau	1	Definitions match.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:Landcover	WTE:Forest	Forest	skos:closeMatch	ENVO:00000111	forested area	1	ENVO's forested area classification does not have the same quantitative definition as WTE Forest but does form a close qualitative match.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:Landcover	WTE:Shrubland	Shrubland	skos:exactMatch	ENVO:00000300	scrubland area	0.75	Definitions match.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:Landcover	WTE:Grassland	Grassland	skos:exactMatch	ENVO:00000106	grassland area	0.75	Unable to find a definition of WTE Grassland so the exact match formed here is based on lexical similarity.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:Landcover	WTE:Sparsely or Non-vegetated	Sparsely or Non-vegetated	skos:broadMatch	ENVO:01000752	area of barren land	1	ENVO's area of barren land does not assert a quantitative threshold for vegetative area, but comes close to doing so with the <15 % value used to define the WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:Landcover	WTE:Cropland	Cropland	skos:exactMatch	ENVO:01000892	area of cropland	0.75	Definitions match. Both ENVO and WTE are sufficiently broad in classification of croplands, recognizing the finer grained permutations that the definitions accomodate.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:Landcover	WTE:Snow and Ice	Snow and Ice	skos:exactMatch	ENVO:01000746	area of perennial ice or snow	1	Definitions match.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:Landcover	WTE:Settlement	Settlement	skos:narrowMatch	ENVO:00000062	populated place	0.75	ENVO's populated place classification pertains to human habitations, whereas the WTE Settlement class appears to contain both human habitations and other human altered environments, save croplands, which have a distinct classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Polar Moist	Polar Moist	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Polar Dry	Polar Dry	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Polar Desert	Polar Desert	skos:exactMatch	SSSOM:NoMapping		1	ENVO has a polar desert biome classification, which would be a candidate match if it weren't for the biogeographical "biome" component of the definition.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Boreal Moist	Boreal Moist	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Boreal Dry	Boreal Dry	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Boreal Desert	Boreal Desert	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Cool Temperate Moist	Cool Temperate Moist	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Cool Temperate Dry	Cool Temperate Dry	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Cool Temperate Desert	Cool Temperate Desert	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Warm Temperate Moist	Warm Temperate Moist	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Warm Temperate Dry	Warm Temperate Dry	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Warm Temperate Desert	Warm Temperate Desert	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Subtropical Moist	Subtropical Moist	skos:closeMatch	ENVO:01000377	humid subtropical	1	ENVO's humid subtropical classification does not share the same quantitative definition as WTE Subtropical Moist, but is close. The qualitative definition forms a close match as well.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Subtropical Dry	Subtropical Dry	skos:exactMatch	ENVO:01000378	arid subtropical	1	ENVO's arid subtropical classification does not share the same quantitative definition as WTE Subtropical Moist, but is close. The qualitative definition forms a close match as well.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Subtropical Desert	Subtropical Desert	skos:exactMatch	ENVO:01000184	subtropical desert biome	1	ENVO has a subtropical desert biome classification, which would be a candidate match if it weren't for the biogeographical "biome" component of the definition.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Tropical Moist	Tropical Moist	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Tropical Dry	Tropical Dry	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not contain this WTE classification.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Climate Region	WTE:Tropical Desert	Tropical Desert	skos:exactMatch	ENVO:01000183	tropical desert biome	1	ENVO has a tropical desert biome classification, which would be a candidate match if it weren't for the biogeographical "biome" component of the definition.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Temperature Domain	WTE:Polar	Polar	skos:exactMatch	ENVO:01000238	polar	1	Definitions match.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Temperature Domain	WTE:Boreal	Boreal	skos:exactMatch	ENVO:01000251	subpolar	1	Definitions match. Specifically, "boreal" is listed as a synonym of "subpolar".	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Temperature Domain	WTE:Cool Temperate	Cool Temperate	skos:broadMatch	ENVO:01000206	temperate	1	ENVO has a broad temperate classification, but not finer grained classes suitable for matching against the WTE cool and warm temperate temperature domains.  Also note, the ENVO classification of temperate is not based on temperature per se, rather, it is a relative classification between two qualitative bounds.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Temperature Domain	WTE:Warm Temperate	Warm Temperate	skos:broadMatch	ENVO:01000206	temperate	1	ENVO has a broad temperate classification, but not finer grained classes suitable for matching against the WTE cool and warm temperate temperature domains.  Also note, the ENVO classification of temperate is not based on temperature per se, rather, it is a relative classification between two qualitative bounds.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Temperature Domain	WTE:Subtropical	Subtropical	skos:closeMatch	ENVO:01000205	subtropical	1	ENVO's subtropical classification does not have same temperature range as WTE however, the relative positioning of ENVO subtropical between tropical and temperate is congruent with WTE.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Temperature Domain	WTE:Tropical	Tropical	skos:closeMatch	ENVO:01000204	tropical	1	ENVO's tropical classification does not have same temperature range as WTE however, the relative positioning of ENVO tropical, with respect to subtropical, is congruent with WTE.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Moisture Domain	WTE:Moist	Moist	skos:closeMatch	ENVO:01000828	humid air	1	ENVO's humid air classification does not define an aridity index value and therefore does not form an exact match with WTE however, the qualitative attributes of WTE moist and ENVO humid air do match.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Moisture Domain	WTE:Dry	Dry	skos:closeMatch	ENVO:01000230	arid	1	ENVO's arid classification has slightly different quantitative definition than WTE Dry and is therefore not an exact match.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
+WTE:World Moisture Domain	WTE:Desert	Desert	skos:exactMatch	SSSOM:NoMapping		1	ENVO does not have a hyperarid classification that matches WTE Desert. ENVO's desert area forms a close lexical match but is more related to ENVO arid than to WTE desert.	semapv:ManualMappingCuration	2023-04-17	https://orcid.org/0000-0003-2261-9931
