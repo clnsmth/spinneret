@@ -1,7 +1,7 @@
 """Get ENVO Classifications from Global Ecological Land Units Lookup"""
 import glob
 import os.path
-import pickle
+import json
 import requests
 import pandas as pd
 from spinneret.utilities import user_agent
@@ -138,9 +138,9 @@ def identify(geometry=str, geometry_type=str, map_server=str):
     return Response(r.json())
 
 
-def eml_to_wte_pkl(eml_dir, output_dir, overwrite=False):
+def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
     """Convert geographic coverages of EML to WTE ecosystems and write to
-    pickle file
+    json file
 
     Parameters
     ----------
@@ -149,7 +149,7 @@ def eml_to_wte_pkl(eml_dir, output_dir, overwrite=False):
     output_dir : str
         Path to directory to write output files
     overwrite : bool, optional
-        Overwrite existing pickle files, by default False
+        Overwrite existing json files, by default False
 
     Returns
     -------
@@ -157,15 +157,15 @@ def eml_to_wte_pkl(eml_dir, output_dir, overwrite=False):
 
     Notes
     -----
-    An empty pickle file indicates no geographic coverage was found. The
-    presence of a pickle file in the `output_dir` indicates the input file was
+    An empty json file indicates no geographic coverage was found. The
+    presence of a json file in the `output_dir` indicates the input file was
     processed.
 
     Examples
     --------
-    # >>> eml_to_wte_pkl(
+    # >>> eml_to_wte_json(
     # ...     eml_dir='data/eml/',
-    # ...     output_dir='data/pkl/'
+    # ...     output_dir='data/json/'
     # ... )
     """
     files = glob.glob(eml_dir + "*.xml")
@@ -175,7 +175,7 @@ def eml_to_wte_pkl(eml_dir, output_dir, overwrite=False):
         res = []
         print(file)
         fname = os.path.splitext(os.path.basename(file))[0]
-        if os.path.isfile(os.path.join(output_dir, fname + ".pkl")) and not overwrite:
+        if os.path.isfile(os.path.join(output_dir, fname + ".json")) and not overwrite:
             continue
         gc = get_geographic_coverage(file)
         if gc is None:  # No geographic coverage found
@@ -188,8 +188,8 @@ def eml_to_wte_pkl(eml_dir, output_dir, overwrite=False):
             a["geographicDescription"] = []
             a["comments"] = "No geographic coverage found"
             res.append(a)
-            with open(output_dir + fname + ".pkl", "wb") as f:
-                pickle.dump(res, f)
+            with open(output_dir + fname + ".json", "w") as f:
+                json.dump({'results': res}, f)
             continue
         for g in gc:
             if g.geom_type() == "point":  # Geographic coverage is a point
@@ -222,17 +222,17 @@ def eml_to_wte_pkl(eml_dir, output_dir, overwrite=False):
                 a["geographicDescription"] = g.description()
                 a["comments"] = "Envelopes and polygons are not supported"
                 res.append(a)
-        with open(os.path.join(output_dir, fname + ".pkl"), "wb") as f:
-            pickle.dump(res, f)
+        with open(os.path.join(output_dir, fname + ".json"), "w") as f:
+            json.dump({'results': res}, f)
 
 
-def wte_pkl_to_df(pkl_dir):
-    """Combine WTE pickle files into a single dataframe
+def wte_json_to_df(json_dir):
+    """Combine WTE json files into a single dataframe
 
     Parameters
     ----------
-    pkl_dir : str
-        Path to directory containing pickle files
+    json_dir : str
+        Path to directory containing json files
 
     Returns
     -------
@@ -241,15 +241,15 @@ def wte_pkl_to_df(pkl_dir):
 
     Examples
     --------
-    # >>> df = wte_pkl_to_wte_df(pkl_dir='data/pkl/')
+    # >>> df = wte_json_to_wte_df(json_dir='data/json/')
     """
-    files = glob.glob(pkl_dir + "*.pkl")
+    files = glob.glob(json_dir + "*.json")
     if not files:
-        raise FileNotFoundError("No pickle files found")
+        raise FileNotFoundError("No json files found")
     res = []
     for file in files:
-        with open(file, "rb") as f:
-            res.append(pickle.load(f))
+        with open(file, "r", encoding="utf-8") as f:
+            res.append(json.load(f)['results'])
     res_flat = [item for sublist in res for item in sublist]
     # Attributes of an identify operation may list multiple values. These
     # values are stored as a list, which need to be unnested into separate
@@ -288,7 +288,7 @@ def summarize_wte_results(wte_df):
     Parameters
     ----------
     wte_df : pandas.DataFrame
-        A dataframe of the WTE ecosystems created by `wte_pkl_to_df`
+        A dataframe of the WTE ecosystems created by `wte_json_to_df`
 
     Returns
     -------
@@ -297,7 +297,7 @@ def summarize_wte_results(wte_df):
 
     Examples
     --------
-    # >>> df = globalelu.wte_pkl_to_df(pkl_dir="src/spinneret/data/pkl/")
+    # >>> df = globalelu.wte_json_to_df(json_dir="src/spinneret/data/json/")
     # >>> res = summarize_wte_results(df)
     """
     res = {}
@@ -345,14 +345,16 @@ if __name__ == "__main__":
 
     print("42")
 
-    # Transform EML to WTE ecosystems and write to pickle file
-    # res = eml_to_wte_pkl(
+    # # Transform EML to WTE ecosystems and write to json file
+    # res = eml_to_wte_json(
     #     eml_dir="/Users/csmith/Code/spinneret/src/spinneret/data/eml/",
-    #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/pkl/"
+    #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
+    #     overwrite=True
     # )
 
-    # Combine pickle files into a single dataframe
-    df = wte_pkl_to_df(pkl_dir="data/pkl/")
-    print(df)
+    # # Combine json files into a single dataframe
+    # df = wte_json_to_df(json_dir="data/json/")
+    # print(df)
+
     # Write df to tsv
     # df.to_csv(output_dir + "globalelu.tsv", sep="\t", index=False)

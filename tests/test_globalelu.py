@@ -15,60 +15,60 @@ def geocov():
     return res
 
 
-def test_eml_to_wte_pkl():
-    """Test the eml_to_wte_pkl() function.
+def test_eml_to_wte_json():
+    """Test the eml_to_wte_json() function.
 
     Each EML file in the src/spinneret/data/eml/ directory should be converted
-    to a WTE pickle file and saved to an output directory. When an EML file is
-    missing a corresponding WTE pickle file, the eml_to_wte_pkl() function
-    should create the pickle file. Furthermore, existing WTE pickle files
+    to a WTE json file and saved to an output directory. When an EML file is
+    missing a corresponding WTE json file, the eml_to_wte_json() function
+    should create the json file. Furthermore, existing WTE json files
     should not be overwritten unless the overwrite flag is set to True.
     """
     fpaths_in = glob.glob("src/spinneret/data/eml/" + "*.xml")
     fnames_in = [splitext(basename(f))[0] for f in fpaths_in]
     with tempfile.TemporaryDirectory() as tmpdir:
         # Each EML file in the src/spinneret/data/eml/ directory should be
-        # converted to a WTE pickle file and saved to an output directory.
-        globalelu.eml_to_wte_pkl(
+        # converted to a WTE json file and saved to an output directory.
+        globalelu.eml_to_wte_json(
             eml_dir="src/spinneret/data/eml/",
             output_dir=tmpdir
         )
         fpaths_out = os.listdir(tmpdir)
         for f in fnames_in:
-            assert f + ".pkl" in fpaths_out
-            assert getsize(join(tmpdir, f + ".pkl")) > 0
+            assert f + ".json" in fpaths_out
+            assert getsize(join(tmpdir, f + ".json")) > 0
 
-        # When an EML file is missing a corresponding WTE pickle file, the
-        # eml_to_wte_pkl() function should create the pickle file.
-        os.remove(join(tmpdir, fnames_in[0] + ".pkl"))
-        assert exists(join(tmpdir, fnames_in[0] + ".pkl")) is False
-        globalelu.eml_to_wte_pkl(
+        # When an EML file is missing a corresponding WTE json file, the
+        # eml_to_wte_json() function should create the json file.
+        os.remove(join(tmpdir, fnames_in[0] + ".json"))
+        assert exists(join(tmpdir, fnames_in[0] + ".json")) is False
+        globalelu.eml_to_wte_json(
             eml_dir="src/spinneret/data/eml/",
             output_dir=tmpdir
         )
-        assert exists(join(tmpdir, fnames_in[0] + ".pkl")) is True
+        assert exists(join(tmpdir, fnames_in[0] + ".json")) is True
 
-        # Furthermore, existing WTE pickle files should not be overwritten
+        # Furthermore, existing WTE json files should not be overwritten
         # unless the overwrite flag is set to True.
-        # Get date and time of existing pickle files
+        # Get date and time of existing json files
         dates = {}
         for f in fnames_in:
-            dates[f] = getmtime(join(tmpdir, f + ".pkl"))
-        # Run the function again without overwriting existing pickle files
-        globalelu.eml_to_wte_pkl(
+            dates[f] = getmtime(join(tmpdir, f + ".json"))
+        # Run the function again without overwriting existing json files
+        globalelu.eml_to_wte_json(
             eml_dir="src/spinneret/data/eml/",
             output_dir=tmpdir
         )
         for f in fnames_in:
-            assert getmtime(join(tmpdir, f + ".pkl")) == dates[f]
-        # Run the function again with overwriting existing pickle files
-        globalelu.eml_to_wte_pkl(
+            assert getmtime(join(tmpdir, f + ".json")) == dates[f]
+        # Run the function again with overwriting existing json files
+        globalelu.eml_to_wte_json(
             eml_dir="src/spinneret/data/eml/",
             output_dir=tmpdir,
             overwrite=True
         )
         for f in fnames_in:
-            assert getmtime(join(tmpdir, f + ".pkl")) != dates[f]
+            assert getmtime(join(tmpdir, f + ".json")) != dates[f]
 
 
 def test_identify(geocov):
@@ -104,14 +104,14 @@ def test_identify(geocov):
         #     assert type(res.get_attributes(["Landforms"])) is list
 
 
-def test_wte_pkl_to_df():
-    """Test the wte_pkl_to_df() function.
+def test_wte_json_to_df():
+    """Test the wte_json_to_df() function.
 
-    The wte_pkl_to_df() function should convert a directory of WTE pickle
+    The wte_json_to_df() function should convert a directory of WTE json
     files to a pandas DataFrame. The DataFrame should have the expected
     columns and should not contain any list values.
     """
-    df = globalelu.wte_pkl_to_df(pkl_dir="src/spinneret/data/pkl/")
+    df = globalelu.wte_json_to_df(json_dir="src/spinneret/data/json/")
     assert df is not None
     assert len(df) > 0
     assert "file" in df.columns
@@ -127,7 +127,7 @@ def test_summarize_wte_results():
     summary statistics for the WTE results. The dictionary should contain the
     expected keys.
     """
-    df = globalelu.wte_pkl_to_df(pkl_dir="src/spinneret/data/pkl/")
+    df = globalelu.wte_json_to_df(json_dir="src/spinneret/data/json/")
     res = globalelu.summarize_wte_results(wte_df=df)
     assert isinstance(res, dict)
     expected_keys = {
