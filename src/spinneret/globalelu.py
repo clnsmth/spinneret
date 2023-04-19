@@ -138,7 +138,7 @@ def identify(geometry=str, geometry_type=str, map_server=str):
     return Response(r.json())
 
 
-def eml_to_wte_pkl(eml_dir, output_dir):
+def eml_to_wte_pkl(eml_dir, output_dir, overwrite=False):
     """Convert geographic coverages of EML to WTE ecosystems and write to
     pickle file
 
@@ -148,6 +148,8 @@ def eml_to_wte_pkl(eml_dir, output_dir):
         Path to directory containing EML files
     output_dir : str
         Path to directory to write output files
+    overwrite : bool, optional
+        Overwrite existing pickle files, by default False
 
     Returns
     -------
@@ -173,6 +175,8 @@ def eml_to_wte_pkl(eml_dir, output_dir):
         res = []
         print(file)
         fname = os.path.splitext(os.path.basename(file))[0]
+        if os.path.isfile(os.path.join(output_dir, fname + ".pkl")) and not overwrite:
+            continue
         gc = get_geographic_coverage(file)
         if gc is None:  # No geographic coverage found
             a = {}
@@ -348,9 +352,7 @@ if __name__ == "__main__":
     # )
 
     # Combine pickle files into a single dataframe
-    # df = wte_pkl_to_df(
-    #     pkl_dir="/Users/csmith/Code/spinneret/src/spinneret/data/pkl/"
-    # )
-    # print(df)
+    df = wte_pkl_to_df(pkl_dir="data/pkl/")
+    print(df)
     # Write df to tsv
     # df.to_csv(output_dir + "globalelu.tsv", sep="\t", index=False)

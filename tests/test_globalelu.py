@@ -1,6 +1,7 @@
 """Test the globalelu module."""
 import tempfile
 import os
+from os.path import join, splitext, getsize, getmtime, basename, exists
 import glob
 import pytest
 from spinneret import globalelu
@@ -18,16 +19,56 @@ def test_eml_to_wte_pkl():
     """Test the eml_to_wte_pkl() function.
 
     Each EML file in the src/spinneret/data/eml/ directory should be converted
-    to a WTE pickle file and saved to an output directory.
+    to a WTE pickle file and saved to an output directory. When an EML file is
+    missing a corresponding WTE pickle file, the eml_to_wte_pkl() function
+    should create the pickle file. Furthermore, existing WTE pickle files
+    should not be overwritten unless the overwrite flag is set to True.
     """
     fpaths_in = glob.glob("src/spinneret/data/eml/" + "*.xml")
-    fnames_in = [os.path.splitext(os.path.basename(f))[0] for f in fpaths_in]
+    fnames_in = [splitext(basename(f))[0] for f in fpaths_in]
     with tempfile.TemporaryDirectory() as tmpdir:
-        globalelu.eml_to_wte_pkl(eml_dir="src/spinneret/data/eml/", output_dir=tmpdir)
+        # Each EML file in the src/spinneret/data/eml/ directory should be
+        # converted to a WTE pickle file and saved to an output directory.
+        globalelu.eml_to_wte_pkl(
+            eml_dir="src/spinneret/data/eml/",
+            output_dir=tmpdir
+        )
         fpaths_out = os.listdir(tmpdir)
         for f in fnames_in:
             assert f + ".pkl" in fpaths_out
-            assert os.path.getsize(os.path.join(tmpdir, f + ".pkl")) > 0
+            assert getsize(join(tmpdir, f + ".pkl")) > 0
+
+        # When an EML file is missing a corresponding WTE pickle file, the
+        # eml_to_wte_pkl() function should create the pickle file.
+        os.remove(join(tmpdir, fnames_in[0] + ".pkl"))
+        assert exists(join(tmpdir, fnames_in[0] + ".pkl")) is False
+        globalelu.eml_to_wte_pkl(
+            eml_dir="src/spinneret/data/eml/",
+            output_dir=tmpdir
+        )
+        assert exists(join(tmpdir, fnames_in[0] + ".pkl")) is True
+
+        # Furthermore, existing WTE pickle files should not be overwritten
+        # unless the overwrite flag is set to True.
+        # Get date and time of existing pickle files
+        dates = {}
+        for f in fnames_in:
+            dates[f] = getmtime(join(tmpdir, f + ".pkl"))
+        # Run the function again without overwriting existing pickle files
+        globalelu.eml_to_wte_pkl(
+            eml_dir="src/spinneret/data/eml/",
+            output_dir=tmpdir
+        )
+        for f in fnames_in:
+            assert getmtime(join(tmpdir, f + ".pkl")) == dates[f]
+        # Run the function again with overwriting existing pickle files
+        globalelu.eml_to_wte_pkl(
+            eml_dir="src/spinneret/data/eml/",
+            output_dir=tmpdir,
+            overwrite=True
+        )
+        for f in fnames_in:
+            assert getmtime(join(tmpdir, f + ".pkl")) != dates[f]
 
 
 def test_identify(geocov):

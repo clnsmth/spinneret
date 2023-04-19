@@ -15,9 +15,7 @@ def list_data_package_scopes():
         Data package scopes in the EDI repository
     """
     r = requests.get(
-        url="https://pasta.lternet.edu/package/eml",
-        headers=user_agent(),
-        timeout=10
+        url="https://pasta.lternet.edu/package/eml", headers=user_agent(), timeout=10
     )
     scopes = str.splitlines(r.text)
     return scopes
