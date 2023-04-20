@@ -270,22 +270,55 @@ def add_envo(json_dir, output_dir):
     None
     """
     # Load WTE to ENVO mapping
-    with open("src/spinneret/data/sssom/wte_to_envo.sssom.tsv", "r") as f:
+    with open("data/sssom/wte-envo.sssom.tsv", "r") as f:
         sssom = pd.read_csv(f, sep="\t")
     # Load WTE json files from json_dir and add ENVO terms
     files = glob.glob(json_dir + "*.json")
     if not files:
         raise FileNotFoundError("No json files found")
     for file in files:
-        res = {}
         with open(file, "r", encoding="utf-8") as f:
-            wte = json.load(f)['WTE']
+            wte = json.load(f)
             # Iterate over list of WTE ecosystems
-            # Get Landforms, Landcover, Moisture, and Temperatur attributes
-            res["ENVO_Landforms"] = []
-            res["ENVO_Landcover"] = []
-            res["ENVO_Moisture"] = []
-            res["ENVO_Temperatur"] = []
+            for w in wte["WTE"][0]["results"]:
+                res = {}
+                # Landforms
+                lf = w["attributes"]["Landforms"]
+                if len(lf) > 0:
+                    envo_lf = sssom.loc[sssom['subject_label'] == lf, 'object_id'].iloc[0]
+                    res["ENVO_Landforms"] = envo_lf
+                else:
+                    res["ENVO_Landforms"] = lf
+
+                lc = w["attributes"]["Landcover"]
+                if len(lc) > 0:
+                    envo_lc = sssom.loc[sssom['subject_label'] == lc, 'object_id'].iloc[0]
+                    res["ENVO_Landcover"] = envo_lc
+                else:
+                    res["ENVO_Landcover"] = lc
+
+                mo = w["attributes"]["Moisture"]
+                if len(mo) > 0:
+                    envo_mo = sssom.loc[sssom['subject_label'] == mo, 'object_id'].iloc[0]
+                    res["ENVO_Moisture"] = envo_mo
+                else:
+                    res["ENVO_Moisture"] = mo
+
+                te = w["attributes"]["Temperatur"]
+                if len(te) > 0:
+                    envo_te = sssom.loc[sssom['subject_label'] == te, 'object_id'].iloc[0]
+                    res["ENVO_Temperatur"] = envo_te
+                else:
+                    res["ENVO_Temperatur"] = te
+
+                if len(te) > 0 and len(mo) > 0:
+                    res["ENVO_Climate_Re"] = envo_te + '|' + envo_mo
+                else:
+                    res["ENVO_Climate_Re"] = []
+                print('42')
+                wte["WTE"][0]["results"]
+
+
 
 
 
@@ -415,17 +448,17 @@ if __name__ == "__main__":
     #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
     #     overwrite=True
     # )
-    res = eml_to_wte_json(
-        eml_dir="/Users/csmith/Data/edi/eml/",
-        output_dir="/Users/csmith/Data/edi/json/",
-        overwrite=True
-    )
+    # res = eml_to_wte_json(
+    #     eml_dir="/Users/csmith/Data/edi/eml/",
+    #     output_dir="/Users/csmith/Data/edi/json/",
+    #     overwrite=True
+    # )
 
     # # Add ENVO terms to WTE json files
-    # add_envo(
-    #     json_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
-    #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json_envo/"
-    # )
+    add_envo(
+        json_dir="data/json/",
+        output_dir="spinneret/data/json_envo/"
+    )
 
     # # Combine json files into a single dataframe
     # df = wte_json_to_df(json_dir="data/json/")
