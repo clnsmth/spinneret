@@ -346,15 +346,34 @@ def wte_json_to_df(json_dir):
     res = []
     for file in files:
         with open(file, "r", encoding="utf-8") as f:
-            res.append(json.load(f)['results'])
-    res_flat = [item for sublist in res for item in sublist]
+            # res.append(json.load(f)['results'])
+            j = json.load(f)
+            wte = j['WTE'][0]['results']
+            res_attr = {}
+            if len(wte) > 0: # Not empty
+                # Parse wte
+                attributes = ["Landforms", "Landcover", "Climate_Re", "Moisture", "Temperatur"]
+                for a in attributes:
+                    res_attr[a] = _json_extract(wte, a)
+            else:
+                res_attr = {'Landforms': [], 'Landcover': [], 'Climate_Re': [], 'Moisture': [], 'Temperatur': []}
+            # Combine with additional metadata
+            edi = j['WTE'][0]['additional_metadata']
+            res_attr.update(edi)
+            res.append(res_attr)
+
+    # res_flat = [item for sublist in res for item in sublist]
     # Attributes of an identify operation may list multiple values. These
     # values are stored as a list, which need to be unnested into separate
     # rows.
-    df = pd.DataFrame(res_flat)
+    # df = pd.DataFrame(res_flat)
+    df = pd.DataFrame(res)
     df = df.explode("Landforms")
     df = df.explode("Landcover")
     df = df.explode("Climate_Re")
+    df = df.explode("Moisture")
+    df = df.explode("Temperatur")
+    df = df.explode("geographicDescription")
     # Sorting datasets by a packageId's scope and identifier is provides an
     # intuitive ordering for browsing by information managers.
     df["scope"] = df["file"].str.split(".", expand=True)[0]
@@ -370,12 +389,50 @@ def wte_json_to_df(json_dir):
             "Landforms",
             "Landcover",
             "Climate_Re",
+            "Moisture",
+            "Temperatur",
             "file",
             "geographicDescription",
-            "comments",
+            "geometry",
+            "comments"
         ]
     ]
-    df = df.rename(columns={"Climate_Re": "Climate_Region"})
+    # df = df.rename(columns={"Climate_Re": "Climate_Region"})
+    # Add "water" to the Landcover column if the comments column contains
+    # "Is an aquatic ecosystem."
+    df.loc[df["comments"].str.contains("Is an aquatic ecosystem."), "Landcover"] = "water"
+    with open("data/sssom/wte-envo.sssom.tsv", "r") as f:
+        sssom = pd.read_csv(f, sep="\t")
+    # Convert the subject_label column to lowercase
+    sssom["subject_label"] = sssom["subject_label"].str.lower()
+    # Convert the Landforms column to lowercase
+    df["Landforms"] = df["Landforms"].str.lower()
+    # Convert the Landcover column to lowercase
+    df["Landcover"] = df["Landcover"].str.lower()
+    # Convert the Climate_Re column to lowercase
+    df["Climate_Re"] = df["Climate_Re"].str.lower()
+    # Convert the Moisture column to lowercase
+    df["Moisture"] = df["Moisture"].str.lower()
+    # Convert the Temperatur column to lowercase
+    df["Temperatur"] = df["Temperatur"].str.lower()
+
+    # Match values in the "Landforms" column to ENVO terms using the sssom
+    # dataframe.
+    df["ENVO_Landforms"] = df["Landforms"].map(sssom.set_index("subject_label")["object_id"])
+    # Mach values in the "Landcover" column to ENVO terms using the sssom
+    # dataframe.
+    df["ENVO_Landcover"] = df["Landcover"].map(sssom.set_index("subject_label")["object_id"])
+    # Mach values in the "Moisture" column to ENVO terms using the sssom
+    # dataframe.
+    df["ENVO_Moisture"] = df["Moisture"].map(sssom.set_index("subject_label")["object_id"])
+    # Mach values in the "Temperatur" column to ENVO terms using the sssom
+    # dataframe.
+    df["ENVO_Temperatur"] = df["Temperatur"].map(sssom.set_index("subject_label")["object_id"])
+    # Combine the "ENVO_Moisture" and "ENVO_Temperatur" columns into a single
+    # column named "ENVO_Climate_Re" with a pipe (|) delimiter.
+    df["ENVO_Climate_Re"] = df["ENVO_Moisture"] + "|" + df["ENVO_Temperatur"]
+    # Drop the "ENVO_Moisture" and "ENVO_Temperatur" columns.
+    df = df.drop(columns=["ENVO_Moisture", "ENVO_Temperatur", "Moisture", "Temperatur"])
     return df
 
 
@@ -399,7 +456,7 @@ def summarize_wte_results(wte_df):
     """
     res = {}
     cols = wte_df.columns.tolist()
-    cols_eco = ["Landforms", "Landcover", "Climate_Region"]
+    cols_eco = ["Landforms", "Landcover", "Climate_Re"]
     # Match success rate of the identify operation
     df = wte_df[cols].dropna(subset=cols_eco)
     res["Successful matches (percent)"] = (df.shape[0] / wte_df.shape[0]) * 100
@@ -451,18 +508,23 @@ if __name__ == "__main__":
     # res = eml_to_wte_json(
     #     eml_dir="/Users/csmith/Data/edi/eml/",
     #     output_dir="/Users/csmith/Data/edi/json/",
-    #     overwrite=True
+    #     overwrite=False
     # )
 
     # # Add ENVO terms to WTE json files
-    add_envo(
-        json_dir="data/json/",
-        output_dir="spinneret/data/json_envo/"
-    )
+    # add_envo(
+    #     json_dir="data/json/",
+    #     output_dir="spinneret/data/json_envo/"
+    # )
 
-    # # Combine json files into a single dataframe
-    # df = wte_json_to_df(json_dir="data/json/")
+    # Combine json files into a single dataframe
+    df = wte_json_to_df(json_dir="/Users/csmith/Data/edi/json/")
     # print(df)
 
     # Write df to tsv
-    # df.to_csv(output_dir + "globalelu.tsv", sep="\t", index=False)
+    output_dir = "/Users/csmith/Data/edi/"
+    df.to_csv(output_dir + "globalelu.tsv", sep="\t", index=False)
+
+    # Summarize WTE results
+    res = summarize_wte_results(df)
+    print(res)
