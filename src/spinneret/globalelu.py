@@ -134,7 +134,7 @@ def identify(geometry=str, geometry_type=str, map_server=str):
         "mapExtent": "-2.865, 47.628, 5.321, 50.017",
         "imageDisplay": "600,550,96",
     }
-    r = requests.get(base, params=payload, timeout=5, headers=user_agent())
+    r = requests.get(base, params=payload, timeout=10, headers=user_agent())
     return Response(r.json())
 
 
@@ -171,6 +171,13 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
     files = glob.glob(eml_dir + "*.xml")
     if not files:
         raise FileNotFoundError("No EML files found")
+    # List EML files without matching json files
+    files = [
+        f
+        for f in files
+        if not os.path.isfile(os.path.join(output_dir, os.path.splitext(os.path.basename(f))[0] + ".json"))
+    ]
+
     for file in files:
         res = []
         print(file)
@@ -180,16 +187,26 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
         gc = get_geographic_coverage(file)
         if gc is None:  # No geographic coverage found
             a = {}
-            a["Landforms"] = []
-            a["Landcover"] = []
-            a["Climate_Re"] = []
+            # a["Landforms"] = []
+            # a["Landcover"] = []
+            # a["Climate_Re"] = []
+            results = [
+                {"attributes": {
+                    "Landforms": [],
+                    "Landcover": [],
+                    "Climate_Re": [],
+                    "Moisture": [],
+                    "Temperatur": []
+                }
+                }
+            ]
             a["file"] = fname
             a["geometry"] = []
             a["geographicDescription"] = []
             a["comments"] = "No geographic coverage found"
-            res.append(a)
+            res.append({"results": results, "additional_metadata": a})
             with open(output_dir + fname + ".json", "w") as f:
-                json.dump({'results': res}, f)
+                json.dump({'WTE': res}, f)
             continue
         for g in gc:
             if g.geom_type() == "point":  # Geographic coverage is a point
@@ -202,28 +219,75 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 except ConnectionError:
                     r = None
                 if r is not None:
-                    a = r.get_attributes(
-                        attributes=["Landforms", "Landcover", "Climate_Re"]
-                    )
+                    # a = r.get_attributes( # TODO move to subsequent step (df)
+                    #     attributes=["Landforms", "Landcover", "Climate_Re"]
+                    # )
+                    a = {}
                     a["file"] = fname
                     a["geometry"] = g.geom_type()
                     a["geographicDescription"] = g.description()
-                    a["comments"] = r.get_comments()
-                    res.append(a)
+                    a["comments"] = r.get_comments()  # TODO apply this method in a subsequent step
+
+                    res.append({"results": r.json['results'], "additional_metadata": a})
                 else:
                     continue
             else:  # Geographic coverage is an envelope or polygon
                 a = {}
-                a["Landforms"] = []
-                a["Landcover"] = []
-                a["Climate_Re"] = []
+                results = [
+                    {"attributes": {
+                        "Landforms": [],
+                        "Landcover": [],
+                        "Climate_Re": [],
+                        "Moisture": [],
+                        "Temperatur": []
+                    }
+                    }
+                ]
+                # a["Landforms"] = []
+                # a["Landcover"] = []
+                # a["Climate_Re"] = []
                 a["file"] = fname
                 a["geometry"] = g.geom_type()
                 a["geographicDescription"] = g.description()
                 a["comments"] = "Envelopes and polygons are not supported"
-                res.append(a)
+                res.append({"results": results, "additional_metadata": a})
         with open(os.path.join(output_dir, fname + ".json"), "w") as f:
-            json.dump({'results': res}, f)
+            json.dump({'WTE': res}, f)
+
+
+def add_envo(json_dir, output_dir):
+    """Add ENVO terms to WTE json files
+
+    Parameters
+    ----------
+    json_dir : str
+        Path to directory containing WTE json files
+    output_dir : str
+        Path to directory to write output files
+
+    Returns
+    -------
+    None
+    """
+    # Load WTE to ENVO mapping
+    with open("src/spinneret/data/sssom/wte_to_envo.sssom.tsv", "r") as f:
+        sssom = pd.read_csv(f, sep="\t")
+    # Load WTE json files from json_dir and add ENVO terms
+    files = glob.glob(json_dir + "*.json")
+    if not files:
+        raise FileNotFoundError("No json files found")
+    for file in files:
+        res = {}
+        with open(file, "r", encoding="utf-8") as f:
+            wte = json.load(f)['WTE']
+            # Iterate over list of WTE ecosystems
+            # Get Landforms, Landcover, Moisture, and Temperatur attributes
+            res["ENVO_Landforms"] = []
+            res["ENVO_Landcover"] = []
+            res["ENVO_Moisture"] = []
+            res["ENVO_Temperatur"] = []
+
+
 
 
 def wte_json_to_df(json_dir):
@@ -345,11 +409,22 @@ if __name__ == "__main__":
 
     print("42")
 
-    # # Transform EML to WTE ecosystems and write to json file
+    # Transform EML to WTE ecosystems and write to json file
     # res = eml_to_wte_json(
     #     eml_dir="/Users/csmith/Code/spinneret/src/spinneret/data/eml/",
     #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
     #     overwrite=True
+    # )
+    res = eml_to_wte_json(
+        eml_dir="/Users/csmith/Data/edi/eml/",
+        output_dir="/Users/csmith/Data/edi/json/",
+        overwrite=True
+    )
+
+    # # Add ENVO terms to WTE json files
+    # add_envo(
+    #     json_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
+    #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json_envo/"
     # )
 
     # # Combine json files into a single dataframe
