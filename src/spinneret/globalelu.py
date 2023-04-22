@@ -42,6 +42,80 @@ def _json_extract(obj, key):
     return values
 
 
+# def initialize_data_model():
+#     res = {
+#         "dataset": None,
+#         "location": [
+#             {
+#                 "identifier": None,
+#                 "description": None,
+#                 "geometry": None,
+#                 "comments": [],
+#                 "ecosystem": []
+#             }
+#         ]
+#     }
+#     return DataModel(res)
+
+
+class DataModel:
+    """A class to manage the data model containing information about the
+    dataset, location, and ecosystem."""
+
+    # def __init__(self, data):
+    #     self.data = data
+
+    def __init__(self):
+        self.data = {
+            "dataset": None,
+            "location": []
+        }
+
+    def add_location(self):
+        """Add a location to the data model."""
+        location = {
+            "identifier": None,
+            "description": None,
+            "geometry": None,
+            "comments": [],
+            "ecosystem": []
+        }
+        self.data["location"].append(location)
+
+    def add_ecosystem(self, schema=None):
+        """Add an ecosystem to the data model.
+
+        Parameters
+        ----------
+        schema : str
+            The schema to use for the ecosystem. The default is None. Options
+            are "WTE".
+        """
+        if schema is None:
+            ecosystem = {
+                "comments": [],
+                "attributes": {}
+            }
+        elif schema == "WTE":
+            ecosystem = {
+                "source": "World Terrestrial Ecosystems",
+                "version": None,
+                "attributes": {
+                    "Temperatur": {"label": None, "annotation": None},
+                    "Moisture": {"label": None, "annotation": None},
+                    "Landcover": {"label": None, "annotation": None},
+                    "Landforms": {"label": None, "annotation": None},
+                    "Climate_Re": {"label": None, "annotation": None},
+                    "ClassName": {"label": None, "annotation": None}
+                }
+            }
+        self.data["location"][0]["ecosystem"].append(ecosystem)
+
+
+
+
+
+
 class Response:
     """A class to parse the response from the identify operation
 
@@ -169,47 +243,23 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
     # ... )
     """
     files = glob.glob(eml_dir + "*.xml")
-    if not files:
-        raise FileNotFoundError("No EML files found")
-    # List EML files without matching json files
-    files = [
-        f
-        for f in files
-        if not os.path.isfile(os.path.join(output_dir, os.path.splitext(os.path.basename(f))[0] + ".json"))
-    ]
-
+    # Iterate over EML files (i.e. datasets)
     for file in files:
         res = []
-        print(file)
+        dm = "DataModel (base)"  # TODO initialize DataModel (i.e. base)
+        # Don't overwrite existing json files unless specified
         fname = os.path.splitext(os.path.basename(file))[0]
         if os.path.isfile(os.path.join(output_dir, fname + ".json")) and not overwrite:
             continue
+        print(file)
         gc = get_geographic_coverage(file)
-        if gc is None:  # No geographic coverage found
-            a = {}
-            # a["Landforms"] = []
-            # a["Landcover"] = []
-            # a["Climate_Re"] = []
-            results = [
-                {"attributes": {
-                    "Landforms": [],
-                    "Landcover": [],
-                    "Climate_Re": [],
-                    "Moisture": [],
-                    "Temperatur": []
-                }
-                }
-            ]
-            a["file"] = fname
-            a["geometry"] = []
-            a["geographicDescription"] = []
-            a["comments"] = "No geographic coverage found"
-            res.append({"results": results, "additional_metadata": a})
+        if gc is None:
             with open(output_dir + fname + ".json", "w") as f:
-                json.dump({'WTE': res}, f)
+                json.dump(res.append(dm), f)
             continue
         for g in gc:
             if g.geom_type() == "point":  # Geographic coverage is a point
+                # TODO DataModel set/insert location (populated with geographic coverage metadata)
                 try:
                     r = identify(
                         geometry=g.to_esri_geometry(),
@@ -219,40 +269,16 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 except ConnectionError:
                     r = None
                 if r is not None:
-                    # a = r.get_attributes( # TODO move to subsequent step (df)
-                    #     attributes=["Landforms", "Landcover", "Climate_Re"]
-                    # )
-                    a = {}
-                    a["file"] = fname
-                    a["geometry"] = g.geom_type()
-                    a["geographicDescription"] = g.description()
-                    a["comments"] = r.get_comments()  # TODO apply this method in a subsequent step
-
-                    res.append({"results": r.json['results'], "additional_metadata": a})
+                    dm = "DataModel (location)"  # TODO DataModel set/insert ecosystem into location
+                    res.append(dm)
                 else:
                     continue
             else:  # Geographic coverage is an envelope or polygon
-                a = {}
-                results = [
-                    {"attributes": {
-                        "Landforms": [],
-                        "Landcover": [],
-                        "Climate_Re": [],
-                        "Moisture": [],
-                        "Temperatur": []
-                    }
-                    }
-                ]
-                # a["Landforms"] = []
-                # a["Landcover"] = []
-                # a["Climate_Re"] = []
-                a["file"] = fname
-                a["geometry"] = g.geom_type()
-                a["geographicDescription"] = g.description()
-                a["comments"] = "Envelopes and polygons are not supported"
-                res.append({"results": results, "additional_metadata": a})
+                # TODO return data model with location and comments indicating that the location is not supported
+                # a["comments"] = "Envelopes and polygons are not supported"
+                res.append(dm)
         with open(os.path.join(output_dir, fname + ".json"), "w") as f:
-            json.dump({'WTE': res}, f)
+            json.dump(res, f)
 
 
 def add_envo(json_dir, output_dir):

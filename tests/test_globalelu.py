@@ -165,3 +165,50 @@ def test_get_attributes(geocov):
     res = r.get_attributes(["Not a valid attribute"])
     assert "Not a valid attribute" in res
     assert len(res["Not a valid attribute"]) == 0
+
+
+def test_initialize_data_model():
+    """Test the initialize_data_model() function.
+
+    The initialize_data_model() function should return a dictionary with
+    the expected keys. When the with_attributes flag is None, the dictionary
+    should not contain any attributes. When the with_attributes flag is one of
+    the supported types, the dictionary should contain the expected attributes.
+    """
+    # The empty dictionary should contain the expected keys.
+
+    res = globalelu.initialize_data_model()
+    assert isinstance(res, dict)
+    assert set(res.keys()) == {"dataset", "location"}
+    assert res["dataset"] is None
+    assert isinstance(res["location"], list)
+    assert isinstance(res["location"][0], dict)
+    assert res["location"][0]["identifier"] is None
+    assert res["location"][0]["description"] is None
+    assert res["location"][0]["geometry"] is None
+    assert isinstance(res["location"][0]["ecosystem"], list)
+    assert isinstance(res["location"][0]["ecosystem"][0], dict)
+    assert isinstance(res["location"][0]["ecosystem"][0]["comments"], list)
+    assert isinstance(res["location"][0]["ecosystem"][0]["attributes"], dict)
+    # The WTE attributes should be present when the with_attributes flag is
+    # set to "WTE".
+    res = globalelu.initialize_data_model(with_attributes="WTE")
+    attrs = res["location"][0]["ecosystem"][0]["attributes"]
+    assert isinstance(attrs, dict)
+    assert isinstance(attrs["WTE"], dict)
+    assert set(attrs["WTE"].keys()) == {
+        "source_version",
+        "Temperatur",
+        "Moisture",
+        "Landcover",
+        "Landforms",
+        "Climate_Re",
+        "ClassName"
+    }
+    for a in set(attrs["WTE"].keys()):
+        if a is not "source_version":
+            assert isinstance(attrs["WTE"][a], dict)
+            assert set(attrs["WTE"][a].keys()) == {"label", "annotation"}
+            assert attrs["WTE"][a]["label"] is None
+            assert attrs["WTE"][a]["annotation"] is None
+

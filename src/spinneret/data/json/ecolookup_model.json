@@ -1,0 +1,57 @@
+{
+    "dataset": "edi.1.1", 
+    "location": [
+        {
+            "identifier": "1829815ht89h2f3",
+            "description": "A single point from which all data were gathered.",
+            "geometry": "point",
+            "comments": ["Comment one.", "Comment two."],
+            "ecosystem": [
+                {
+                    "source": "WTE",
+                    "version": "1.0.0",
+                    "attributes": {
+                        "Temperatur": {"label": "Warm Temperate", "annotation": "ENVO:A"},
+                        "Moisture": {"label": "Moist", "annotation": "ENVO:B"},
+                        "Landcover": {"label": "Grassland", "annotation": "ENVO:C"},
+                        "Landforms": {"label": "Mountains", "annotation": "ENVO:D"},
+                        "Climate_Re": {"label": "Warm Temperate Moist", "annotation": "ENVO:A|ENVO:B"},
+                        "ClassName": {"label": "Warm Temperate Moist Grassland on Mountains", "annotation": "(ENVO:A|ENVO:B)|ENVO:C|ENVO:D"}
+                    }
+                }
+            ]
+	    },
+	    {
+            "identifier": "2983hgfe98hf34f",
+            "description": "A large geographic area that the data were collected in.",
+            "geometry": "envelope",
+            "comments": ["Comment one.", "Comment two."],
+            "ecosystem": [
+                {
+                    "source": "WTE",
+                    "version": "1.0.0",
+                    "attributes": {
+                        "Temperatur": {"label": "Warm Temperate", "annotation": "ENVO:A"},
+                        "Moisture": {"label": "Moist", "annotation": "ENVO:B"},
+                        "Landcover": {"label": "Grassland", "annotation": "ENVO:C"},
+                        "Landforms": {"label": "Mountains", "annotation": "ENVO:D"},
+                        "Climate_Re": {"label": "Warm Temperate Moist", "annotation": "ENVO:A|ENVO:B"},
+                        "ClassName": {"label": "Warm Temperate Moist Grassland on Mountains", "annotation": "(ENVO:A|ENVO:B)|ENVO:C|ENVO:D"}
+                    }
+                },
+                {
+                    "source": "MEU",
+                    "version": "2.2.0",
+                    "attributes": {
+                        "Temperatur": {"label": "Warm Temperate", "annotation": "ENVO:A"},
+                        "Moisture": {"label": "Moist", "annotation": "ENVO:B"},
+                        "Landcover": {"label": "Grassland", "annotation": "ENVO:C"},
+                        "Landforms": {"label": "Mountains", "annotation": "ENVO:D"},
+                        "Climate_Re": {"label": "Warm Temperate Moist", "annotation": "ENVO:A|ENVO:B"},
+                        "ClassName": {"label": "Warm Temperate Moist Grassland on Mountains", "annotation": "(ENVO:A|ENVO:B)|ENVO:C|ENVO:D"}
+                    }
+                }
+            ]
+	    }
+	]
+}
