@@ -42,28 +42,9 @@ def _json_extract(obj, key):
     return values
 
 
-# def initialize_data_model():
-#     res = {
-#         "dataset": None,
-#         "location": [
-#             {
-#                 "identifier": None,
-#                 "description": None,
-#                 "geometry": None,
-#                 "comments": [],
-#                 "ecosystem": []
-#             }
-#         ]
-#     }
-#     return DataModel(res)
-
-
-class DataModel:
+class Base:
     """A class to manage the data model containing information about the
     dataset, location, and ecosystem."""
-
-    # def __init__(self, data):
-    #     self.data = data
 
     def __init__(self):
         self.data = {
@@ -71,45 +52,80 @@ class DataModel:
             "location": []
         }
 
-    def add_location(self):
-        """Add a location to the data model."""
-        location = {
+    def set_dataset(self, dataset):
+        self.data["dataset"] = dataset
+
+    def add_location(self, location):
+        self.data["location"].append(location.data)
+
+
+class Location:
+
+    def __init__(self):
+        self.data = {
             "identifier": None,
             "description": None,
-            "geometry": None,
+            "geometry_type": None,
             "comments": [],
             "ecosystem": []
         }
-        self.data["location"].append(location)
 
-    def add_ecosystem(self, schema=None):
-        """Add an ecosystem to the data model.
+    def set_identifier(self, identifier):
+        self.data["identifier"] = identifier
 
-        Parameters
-        ----------
-        schema : str
-            The schema to use for the ecosystem. The default is None. Options
-            are "WTE".
-        """
-        if schema is None:
-            ecosystem = {
-                "comments": [],
-                "attributes": {}
-            }
-        elif schema == "WTE":
-            ecosystem = {
-                "source": "World Terrestrial Ecosystems",
-                "version": None,
-                "attributes": {
-                    "Temperatur": {"label": None, "annotation": None},
-                    "Moisture": {"label": None, "annotation": None},
-                    "Landcover": {"label": None, "annotation": None},
-                    "Landforms": {"label": None, "annotation": None},
-                    "Climate_Re": {"label": None, "annotation": None},
-                    "ClassName": {"label": None, "annotation": None}
-                }
-            }
-        self.data["location"][0]["ecosystem"].append(ecosystem)
+    def set_description(self, description):
+        self.data["description"] = description
+
+    def set_geometry_type(self, geometry_type):
+        self.data["geometry_type"] = geometry_type
+
+    def add_comments(self, comments):
+        self.data["comments"].append(comments)
+
+    def add_ecosystem(self, ecosystem):
+        self.data["ecosystem"].append(ecosystem.data)
+
+
+class Ecosystem:
+
+    def __init__(self):
+        self.data = {
+            "source": None,
+            "version": None,
+            "comments": [],
+            "attributes": None
+        }
+
+    def set_source(self, source):
+        self.data["source"] = source
+
+    def set_version(self, version):
+        self.data["version"] = version
+
+    def add_comments(self, comments):
+        self.data["comments"].append(comments)
+
+    def set_attributes(self, response, source):
+        if source == 'wte':
+            attributes_list = ["Temperatur", "Moisture", "Landcover",
+                               "Landforms", "Climate_Re", "ClassName"]
+            # TODO Iterate through attributes list and add standard attribute fields
+
+            # TODO define get_annotation(source, sssom) for looking up attribute annotations from sssom
+            for attribute in self.data["attributes"].keys():
+                self.data["attributes"][attribute]["label"] = response.get_attributes(
+                    ["Label"]
+                )[0]
+                self.data["attributes"][attribute]["annotation"] = response.get_attributes(
+                    ["Annotation"]
+                )[0]
+
+    def add_attributes(self, attributes):
+        # This simply adds the attributes to the ecosystem data model
+        pass
+
+
+
 
 
 
@@ -245,21 +261,31 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
     files = glob.glob(eml_dir + "*.xml")
     # Iterate over EML files (i.e. datasets)
     for file in files:
-        res = []
-        dm = "DataModel (base)"  # TODO initialize DataModel (i.e. base)
+        file_name = os.path.splitext(os.path.basename(file))[0]
+        # Initialize DataModel-base and add the dataset identifier
+        base = Base()
+        base.set_dataset(file_name)
         # Don't overwrite existing json files unless specified
-        fname = os.path.splitext(os.path.basename(file))[0]
-        if os.path.isfile(os.path.join(output_dir, fname + ".json")) and not overwrite:
+        if os.path.isfile(os.path.join(output_dir, file_name + ".json")) and not overwrite:
             continue
         print(file)
+        # Get metadata for dataset location
         gc = get_geographic_coverage(file)
-        if gc is None:
-            with open(output_dir + fname + ".json", "w") as f:
-                json.dump(res.append(dm), f)
+        if gc is None:  # No geographic coverage (location) found. Continue to next dataset.
+            with open(output_dir + file_name + ".json", "w") as f:
+                json.dump(res.append(base.data), f)
             continue
         for g in gc:
-            if g.geom_type() == "point":  # Geographic coverage is a point
-                # TODO DataModel set/insert location (populated with geographic coverage metadata)
+            # TODO Initialize a new DataModel-location
+            # TODO Add location metadata to DataModel-location
+            location = Location()
+            location.set_description(g.description())
+            location.set_geometry_type(g.geom_type())
+            if g.geom_type() is not "point":
+                location.add_comments("Envelopes and polygons are unsupported at this time.")
+                continue
+            # Identify the geometry's ecosystem
+            if g.geom_type() == "point":
                 try:
                     r = identify(
                         geometry=g.to_esri_geometry(),
@@ -269,16 +295,14 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 except ConnectionError:
                     r = None
                 if r is not None:
-                    dm = "DataModel (location)"  # TODO DataModel set/insert ecosystem into location
-                    res.append(dm)
+                    ecosystem = Ecosystem()
+                    ecosystem.set_source("wte")
+                    ecosystem.set_attributes(response=r, source="wte")
+                    location.add_ecosystem(ecosystem)
                 else:
                     continue
-            else:  # Geographic coverage is an envelope or polygon
-                # TODO return data model with location and comments indicating that the location is not supported
-                # a["comments"] = "Envelopes and polygons are not supported"
-                res.append(dm)
-        with open(os.path.join(output_dir, fname + ".json"), "w") as f:
-            json.dump(res, f)
+        with open(os.path.join(output_dir, file_name + ".json"), "w") as f:
+            json.dump(base.data, f)
 
 
 def add_envo(json_dir, output_dir):
@@ -526,11 +550,11 @@ if __name__ == "__main__":
     print("42")
 
     # Transform EML to WTE ecosystems and write to json file
-    # res = eml_to_wte_json(
-    #     eml_dir="/Users/csmith/Code/spinneret/src/spinneret/data/eml/",
-    #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
-    #     overwrite=True
-    # )
+    res = eml_to_wte_json(
+        eml_dir="/Users/csmith/Code/spinneret/src/spinneret/data/eml/",
+        output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
+        overwrite=True
+    )
     # res = eml_to_wte_json(
     #     eml_dir="/Users/csmith/Data/edi/eml/",
     #     output_dir="/Users/csmith/Data/edi/json/",
@@ -543,14 +567,14 @@ if __name__ == "__main__":
     #     output_dir="spinneret/data/json_envo/"
     # )
 
-    # Combine json files into a single dataframe
-    df = wte_json_to_df(json_dir="/Users/csmith/Data/edi/json/")
-    # print(df)
+    # # Combine json files into a single dataframe
+    # df = wte_json_to_df(json_dir="/Users/csmith/Data/edi/json/")
+    # # print(df)
 
-    # Write df to tsv
-    output_dir = "/Users/csmith/Data/edi/"
-    df.to_csv(output_dir + "globalelu.tsv", sep="\t", index=False)
+    # # Write df to tsv
+    # output_dir = "/Users/csmith/Data/edi/"
+    # df.to_csv(output_dir + "globalelu.tsv", sep="\t", index=False)
 
-    # Summarize WTE results
-    res = summarize_wte_results(df)
-    print(res)
+    # # Summarize WTE results
+    # res = summarize_wte_results(df)
+    # print(res)

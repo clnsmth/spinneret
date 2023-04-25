@@ -1,1 +1,1 @@
-{"WTE": [{"results": [{"attributes": {"Landforms": [], "Landcover": [], "Climate_Re": [], "Moisture": [], "Temperatur": []}}], "additional_metadata": {"file": "edi.2.2", "geometry": "envelope", "geographicDescription": "the University of Kansas Field Station (KUFS) located in eastern\n\t\t\t\t\tKansas in the prairie-forest ecotone region of the central USA. KUFS and is located just\n\t\t\t\t\tnorth of Lawrence, Kansas, USA.", "comments": "Envelopes and polygons are not supported"}}]}
+{"dataset": "edi.2.2", "location": []}

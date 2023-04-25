@@ -4,7 +4,7 @@
         {
             "identifier": "1829815ht89h2f3",
             "description": "A single point from which all data were gathered.",
-            "geometry": "point",
+            "geometry_type": "point",
             "comments": ["Comment one.", "Comment two."],
             "ecosystem": [
                 {
@@ -24,7 +24,7 @@
 	    {
             "identifier": "2983hgfe98hf34f",
             "description": "A large geographic area that the data were collected in.",
-            "geometry": "envelope",
+            "geometry_type": "envelope",
             "comments": ["Comment one.", "Comment two."],
             "ecosystem": [
                 {
