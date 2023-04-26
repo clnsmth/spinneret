@@ -47,10 +47,7 @@ class Base:
     dataset, location, and ecosystem."""
 
     def __init__(self):
-        self.data = {
-            "dataset": None,
-            "location": []
-        }
+        self.data = {"dataset": None, "location": []}
 
     def set_dataset(self, dataset):
         self.data["dataset"] = dataset
@@ -60,14 +57,13 @@ class Base:
 
 
 class Location:
-
     def __init__(self):
         self.data = {
             "identifier": None,
             "description": None,
             "geometry_type": None,
             "comments": [],
-            "ecosystem": []
+            "ecosystem": [],
         }
 
     def set_identifier(self, identifier):
@@ -87,13 +83,12 @@ class Location:
 
 
 class Ecosystem:
-
     def __init__(self):
         self.data = {
             "source": None,
             "version": None,
             "comments": [],
-            "attributes": None
+            "attributes": None,
         }
 
     def set_source(self, source):
@@ -105,31 +100,88 @@ class Ecosystem:
     def add_comments(self, comments):
         self.data["comments"].append(comments)
 
-    def set_attributes(self, response, source):
-        if source == 'wte':
-            attributes_list = ["Temperatur", "Moisture", "Landcover",
-                               "Landforms", "Climate_Re", "ClassName"]
-            # TODO Iterate through attributes list and add standard attribute fields
-
-            # TODO define get_annotation(source, sssom) for looking up attribute annotations from sssom
-            for attribute in self.data["attributes"].keys():
-                self.data["attributes"][attribute]["label"] = response.get_attributes(
-                    ["Label"]
-                )[0]
-                self.data["attributes"][attribute]["annotation"] = response.get_attributes(
-                    ["Annotation"]
-                )[0]
-
     def add_attributes(self, attributes):
-        # This simply adds the attributes to the ecosystem data model
-        pass
+        self.data["attributes"] = attributes.data
 
 
+class Attributes:
+    def __init__(self, source):
+        if source == "wte":
+            self.data = {
+                "Temperatur": {"label": None, "annotation": None},
+                "Moisture": {"label": None, "annotation": None},
+                "Landcover": {"label": None, "annotation": None},
+                "Landforms": {"label": None, "annotation": None},
+                "Climate_Re": {"label": None, "annotation": None},
+                "ClassName": {"label": None, "annotation": None},
+            }
 
+    def set_attributes(self, response, source):
+        attributes = Attributes(source="wte")
+        if source == "wte":
+            attributes.set_wte_attributes(response)
+            self.data = attributes.data
 
+    @staticmethod
+    def get_annotation(label, source):
+        if source == "wte":
+            with open(
+                    "src/spinneret/data/sssom/wte-envo.sssom.tsv",
+                    mode="r",
+                    encoding="utf-8"
+            ) as f:
+                sssom = pd.read_csv(f, sep="\t")
+            sssom["subject_label"] = sssom["subject_label"].str.lower()
+        res = sssom.loc[
+            sssom["subject_label"] == label.lower(),
+            "object_id"
+        ].values[0]
+        return res
 
-
-
+    def set_wte_attributes(self, response):
+        for attribute in self.data.keys():
+            label = response.get_attributes([attribute])[attribute][0]
+            if attribute == "Climate_Re":
+                # Climate_Re is a composite class composed of Temperatur
+                # and Moisture classes.
+                annotation = (
+                    "("
+                    + self.data["Temperatur"].get("annotation")
+                    + "|"
+                    + self.data["Moisture"].get("annotation")
+                    + ")"
+                )
+                self.data[attribute] = {
+                    "label": label,
+                    "annotation": annotation
+                }
+            elif attribute == "ClassName":
+                # ClassName is a composite class composed of Temperatur,
+                # Moisture, Landcover, and Landforms classes.
+                annotation = (
+                    "("
+                    + self.data["Temperatur"].get("annotation")
+                    + "|"
+                    + self.data["Moisture"].get("annotation")
+                    + ")"
+                    + "|"
+                    + self.data["Landcover"].get("annotation")
+                    + "|"
+                    + self.data["Landforms"].get("annotation")
+                )
+                self.data[attribute] = {
+                    "label": label,
+                    "annotation": annotation
+                }
+            else:
+                # All other classes are single classes, which resolve to
+                # terms listed in the SSSOM file, and which compose the
+                # composite classes of Climate_Re and ClassName.
+                self.data[attribute] = {
+                    "label": label,
+                    "annotation": self.get_annotation(label, source="wte"),
+                }
+        self.data = self.data
 
 
 class Response:
@@ -166,20 +218,33 @@ class Response:
             res[a] = _json_extract(self.json, a)
         return res
 
-    def get_comments(self):
+    def get_comments(self, source):
         """List of comments about the response
 
         Returns
         -------
         comments : str
             A string of comments about the response.
+        None if no comments are found.
         """
-        pv = _json_extract(self.json, "Pixel Value")
-        if len(pv) == 0:  # pv == []
-            return "Is unknown ecosystem (outside the WTE area)."
-        if len(pv) > 0 and pv[0] == "NoData":
-            return "Is an aquatic ecosystem."
-        return "Is a terrestrial ecosystem."
+        if source == "wte":
+            pv = _json_extract(self.json, "Pixel Value")
+            if len(pv) == 0:
+                return "WTE: Location is out of bounds."
+            if len(pv) > 0 and pv[0] == "NoData":
+                return "WTE: Location is an area of water."
+            return "WTE: Location is a terrestrial ecosystem."
+        return None
+
+    def has_ecosystem(self, source):
+        if source == "wte":
+            pv = _json_extract(self.json, "Pixel Value")
+            if len(pv) == 0:
+                return False
+            if len(pv) > 0 and pv[0] == "NoData":
+                return False
+            return True
+        return None
 
 
 def identify(geometry=str, geometry_type=str, map_server=str):
@@ -262,30 +327,36 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
     # Iterate over EML files (i.e. datasets)
     for file in files:
         file_name = os.path.splitext(os.path.basename(file))[0]
-        # Initialize DataModel-base and add the dataset identifier
+        output_file_path = os.path.join(output_dir, file_name + ".json")
+        # Initialize the DataModel Base object, which forms the basis of the
+        # return object
         base = Base()
         base.set_dataset(file_name)
         # Don't overwrite existing json files unless specified
-        if os.path.isfile(os.path.join(output_dir, file_name + ".json")) and not overwrite:
+        if os.path.isfile(output_file_path) and not overwrite:
             continue
         print(file)
         # Get metadata for dataset location
         gc = get_geographic_coverage(file)
-        if gc is None:  # No geographic coverage (location) found. Continue to next dataset.
-            with open(output_dir + file_name + ".json", "w") as f:
-                json.dump(res.append(base.data), f)
+        if gc is None:  # No geographic coverage (location) found
+            with open(output_file_path, "w", encoding='utf-8') as f:
+                json.dump(base.data, f)
             continue
         for g in gc:
-            # TODO Initialize a new DataModel-location
-            # TODO Add location metadata to DataModel-location
+            # Build a location object for each geographic coverage and add it
+            # to the base object
             location = Location()
             location.set_description(g.description())
             location.set_geometry_type(g.geom_type())
-            if g.geom_type() is not "point":
-                location.add_comments("Envelopes and polygons are unsupported at this time.")
+            if g.geom_type() != "point":
+                location.add_comments(
+                    "Envelopes and polygons are unsupported at this time."
+                )
+                base.add_location(location)
                 continue
-            # Identify the geometry's ecosystem
+            # Identify the ecosystem(s) at the location.
             if g.geom_type() == "point":
+                location.add_comments("WTE: Was queried.")
                 try:
                     r = identify(
                         geometry=g.to_esri_geometry(),
@@ -295,82 +366,32 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 except ConnectionError:
                     r = None
                 if r is not None:
+                    # TODO Iterate over all results (i.e. ecosystems) and add
+                    #  to the location object.
+                    # Build the ecosystem object and add it to the location. If
+                    # the location could not be resolved, or has no ecosystems,
+                    # add an explanatory comment to the location object to
+                    # facilitate understanding and analysis.
+                    if not r.has_ecosystem(source="wte"):
+                        location.add_comments(r.get_comments("wte"))
+                        base.add_location(location)
+                        continue
                     ecosystem = Ecosystem()
                     ecosystem.set_source("wte")
-                    ecosystem.set_attributes(response=r, source="wte")
+                    ecosystem.set_version(None)
+                    attributes = Attributes(source="wte")
+                    attributes.set_attributes(response=r, source="wte")
+                    ecosystem.add_attributes(attributes)
                     location.add_ecosystem(ecosystem)
                 else:
                     continue
-        with open(os.path.join(output_dir, file_name + ".json"), "w") as f:
+            # Add the location, and its ecosystems, to the base object.
+            base.add_location(location)
+        # Write the base object to a json file. Empty locations indicate no
+        # ecosystems were found at the location. Empty ecosystems indicate the
+        # location has no resolvable ecosystems.
+        with open(output_file_path, "w", encoding='utf-8') as f:
             json.dump(base.data, f)
-
-
-def add_envo(json_dir, output_dir):
-    """Add ENVO terms to WTE json files
-
-    Parameters
-    ----------
-    json_dir : str
-        Path to directory containing WTE json files
-    output_dir : str
-        Path to directory to write output files
-
-    Returns
-    -------
-    None
-    """
-    # Load WTE to ENVO mapping
-    with open("data/sssom/wte-envo.sssom.tsv", "r") as f:
-        sssom = pd.read_csv(f, sep="\t")
-    # Load WTE json files from json_dir and add ENVO terms
-    files = glob.glob(json_dir + "*.json")
-    if not files:
-        raise FileNotFoundError("No json files found")
-    for file in files:
-        with open(file, "r", encoding="utf-8") as f:
-            wte = json.load(f)
-            # Iterate over list of WTE ecosystems
-            for w in wte["WTE"][0]["results"]:
-                res = {}
-                # Landforms
-                lf = w["attributes"]["Landforms"]
-                if len(lf) > 0:
-                    envo_lf = sssom.loc[sssom['subject_label'] == lf, 'object_id'].iloc[0]
-                    res["ENVO_Landforms"] = envo_lf
-                else:
-                    res["ENVO_Landforms"] = lf
-
-                lc = w["attributes"]["Landcover"]
-                if len(lc) > 0:
-                    envo_lc = sssom.loc[sssom['subject_label'] == lc, 'object_id'].iloc[0]
-                    res["ENVO_Landcover"] = envo_lc
-                else:
-                    res["ENVO_Landcover"] = lc
-
-                mo = w["attributes"]["Moisture"]
-                if len(mo) > 0:
-                    envo_mo = sssom.loc[sssom['subject_label'] == mo, 'object_id'].iloc[0]
-                    res["ENVO_Moisture"] = envo_mo
-                else:
-                    res["ENVO_Moisture"] = mo
-
-                te = w["attributes"]["Temperatur"]
-                if len(te) > 0:
-                    envo_te = sssom.loc[sssom['subject_label'] == te, 'object_id'].iloc[0]
-                    res["ENVO_Temperatur"] = envo_te
-                else:
-                    res["ENVO_Temperatur"] = te
-
-                if len(te) > 0 and len(mo) > 0:
-                    res["ENVO_Climate_Re"] = envo_te + '|' + envo_mo
-                else:
-                    res["ENVO_Climate_Re"] = []
-                print('42')
-                wte["WTE"][0]["results"]
-
-
-
-
 
 
 def wte_json_to_df(json_dir):
@@ -398,17 +419,29 @@ def wte_json_to_df(json_dir):
         with open(file, "r", encoding="utf-8") as f:
             # res.append(json.load(f)['results'])
             j = json.load(f)
-            wte = j['WTE'][0]['results']
+            wte = j["WTE"][0]["results"]
             res_attr = {}
-            if len(wte) > 0: # Not empty
+            if len(wte) > 0:  # Not empty
                 # Parse wte
-                attributes = ["Landforms", "Landcover", "Climate_Re", "Moisture", "Temperatur"]
+                attributes = [
+                    "Landforms",
+                    "Landcover",
+                    "Climate_Re",
+                    "Moisture",
+                    "Temperatur",
+                ]
                 for a in attributes:
                     res_attr[a] = _json_extract(wte, a)
             else:
-                res_attr = {'Landforms': [], 'Landcover': [], 'Climate_Re': [], 'Moisture': [], 'Temperatur': []}
+                res_attr = {
+                    "Landforms": [],
+                    "Landcover": [],
+                    "Climate_Re": [],
+                    "Moisture": [],
+                    "Temperatur": [],
+                }
             # Combine with additional metadata
-            edi = j['WTE'][0]['additional_metadata']
+            edi = j["WTE"][0]["additional_metadata"]
             res_attr.update(edi)
             res.append(res_attr)
 
@@ -444,14 +477,16 @@ def wte_json_to_df(json_dir):
             "file",
             "geographicDescription",
             "geometry",
-            "comments"
+            "comments",
         ]
     ]
     # df = df.rename(columns={"Climate_Re": "Climate_Region"})
     # Add "water" to the Landcover column if the comments column contains
     # "Is an aquatic ecosystem."
-    df.loc[df["comments"].str.contains("Is an aquatic ecosystem."), "Landcover"] = "water"
-    with open("data/sssom/wte-envo.sssom.tsv", "r") as f:
+    df.loc[
+        df["comments"].str.contains("Is an aquatic ecosystem."), "Landcover"
+    ] = "water"
+    with open("data/sssom/wte-envo.sssom.tsv", "r", encoding='utf-8') as f:
         sssom = pd.read_csv(f, sep="\t")
     # Convert the subject_label column to lowercase
     sssom["subject_label"] = sssom["subject_label"].str.lower()
@@ -468,21 +503,31 @@ def wte_json_to_df(json_dir):
 
     # Match values in the "Landforms" column to ENVO terms using the sssom
     # dataframe.
-    df["ENVO_Landforms"] = df["Landforms"].map(sssom.set_index("subject_label")["object_id"])
+    df["ENVO_Landforms"] = df["Landforms"].map(
+        sssom.set_index("subject_label")["object_id"]
+    )
     # Mach values in the "Landcover" column to ENVO terms using the sssom
     # dataframe.
-    df["ENVO_Landcover"] = df["Landcover"].map(sssom.set_index("subject_label")["object_id"])
+    df["ENVO_Landcover"] = df["Landcover"].map(
+        sssom.set_index("subject_label")["object_id"]
+    )
     # Mach values in the "Moisture" column to ENVO terms using the sssom
     # dataframe.
-    df["ENVO_Moisture"] = df["Moisture"].map(sssom.set_index("subject_label")["object_id"])
+    df["ENVO_Moisture"] = df["Moisture"].map(
+        sssom.set_index("subject_label")["object_id"]
+    )
     # Mach values in the "Temperatur" column to ENVO terms using the sssom
     # dataframe.
-    df["ENVO_Temperatur"] = df["Temperatur"].map(sssom.set_index("subject_label")["object_id"])
+    df["ENVO_Temperatur"] = df["Temperatur"].map(
+        sssom.set_index("subject_label")["object_id"]
+    )
     # Combine the "ENVO_Moisture" and "ENVO_Temperatur" columns into a single
     # column named "ENVO_Climate_Re" with a pipe (|) delimiter.
     df["ENVO_Climate_Re"] = df["ENVO_Moisture"] + "|" + df["ENVO_Temperatur"]
     # Drop the "ENVO_Moisture" and "ENVO_Temperatur" columns.
-    df = df.drop(columns=["ENVO_Moisture", "ENVO_Temperatur", "Moisture", "Temperatur"])
+    df = df.drop(
+        columns=["ENVO_Moisture", "ENVO_Temperatur", "Moisture", "Temperatur"]
+    )
     return df
 
 
@@ -520,23 +565,6 @@ def summarize_wte_results(wte_df):
     for key, value in other_metrics.items():
         i = wte_df["comments"] == value
         res[key] = wte_df[i].shape[0]
-
-    # List the number of aquatic ecosystems
-    # i = wte_df["comments"] == "Is an aquatic ecosystem."
-    # res["aquatic_ecosystem"] = wte_df[i].shape[0]
-    # # List the number of unknown ecosystems
-    # i = wte_df["comments"] == "Is unknown ecosystem (outside the WTE area)."
-    # res["out_of_bounds"] = wte_df[i].shape[0]
-    # # List the number of terrestrial ecosystems
-    # i = wte_df["comments"] == "Is a terrestrial ecosystem."
-    # res["terrestrial_ecosystem"] = wte_df[i].shape[0]
-    # # List the number of no geographic coverage found
-    # i = wte_df["comments"] == "No geographic coverage found"
-    # res["no_geographic_coverage"] = wte_df[i].shape[0]
-    # List the number of unsupported geometries
-    # i = wte_df["comments"] == "Envelopes and polygons are not supported"
-    # res["unsupported_geometry"] = wte_df[i].shape[0]
-    # Summarize by unique combinations of Landforms, Landcover, Climate_Region
     for col in cols_eco:
         df["count"] = 1
         df_grouped = df.groupby(col).count().reset_index()
@@ -549,22 +577,16 @@ if __name__ == "__main__":
 
     print("42")
 
-    # Transform EML to WTE ecosystems and write to json file
-    res = eml_to_wte_json(
-        eml_dir="/Users/csmith/Code/spinneret/src/spinneret/data/eml/",
-        output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
-        overwrite=True
-    )
+    # # Transform EML to WTE ecosystems and write to json file
+    # res = eml_to_wte_json(
+    #     eml_dir="/Users/csmith/Code/spinneret/src/spinneret/data/eml/",
+    #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
+    #     overwrite=True
+    # )
     # res = eml_to_wte_json(
     #     eml_dir="/Users/csmith/Data/edi/eml/",
     #     output_dir="/Users/csmith/Data/edi/json/",
-    #     overwrite=False
-    # )
-
-    # # Add ENVO terms to WTE json files
-    # add_envo(
-    #     json_dir="data/json/",
-    #     output_dir="spinneret/data/json_envo/"
+    #     overwrite=True
     # )
 
     # # Combine json files into a single dataframe

@@ -86,9 +86,9 @@
 					north of Lawrence, Kansas, USA.</geographicDescription>
         <boundingCoordinates>
           <westBoundingCoordinate>-95.1976</westBoundingCoordinate>
-          <eastBoundingCoordinate>-95.1834</eastBoundingCoordinate>
+          <eastBoundingCoordinate>-95.1976</eastBoundingCoordinate>
           <northBoundingCoordinate>39.0525</northBoundingCoordinate>
-          <southBoundingCoordinate>39.0408</southBoundingCoordinate>
+          <southBoundingCoordinate>39.0525</southBoundingCoordinate>
         </boundingCoordinates>
       </geographicCoverage>
       <temporalCoverage>
