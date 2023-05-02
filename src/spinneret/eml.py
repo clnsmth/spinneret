@@ -226,7 +226,7 @@ class GeographicCoverage:
 
         Returns
         -------
-        dict : ESRI JSON geometry
+        str : ESRI JSON geometry
             ESRI JSON geometry type as "polygon", "point", or "envelope"
 
         Notes
