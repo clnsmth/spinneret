@@ -4,6 +4,9 @@ import os.path
 import json
 import requests
 import pandas as pd
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from shapely.geometry import Point
 from spinneret.utilities import user_agent
 from spinneret.eml import get_geographic_coverage
 
@@ -244,6 +247,13 @@ class Response:
             if len(pv) > 0 and pv[0] == "NoData":
                 return False
             return True
+        elif source == "ecu":
+            pv = _json_extract(self.json, "Pixel Value")
+            if len(pv) == 0:
+                return False
+            if len(pv) > 0 and pv[0] == "NoData":
+                return False
+            return True
         return None
 
 
@@ -257,16 +267,14 @@ def identify(geometry=str, geometry_type=str, map_server=str):
     ----------
     geometry : str
         An ESRI geometry in JSON format.
-        for more information.
     geometry_type : str
         The `geometryType` parameter corresponding to `geometry`.
     map_server : str
-        The map server to query.
+        The map server to query. Options are `wte`.
 
     Returns
     -------
-    response : dict
-        A dictionary of the JSON response from the identify operation.
+    Response
 
     Examples
     --------
@@ -288,6 +296,51 @@ def identify(geometry=str, geometry_type=str, map_server=str):
         "tolerance": 2,
         "mapExtent": "-2.865, 47.628, 5.321, 50.017",
         "imageDisplay": "600,550,96",
+    }
+    r = requests.get(base, params=payload, timeout=10, headers=user_agent())
+    return Response(r.json())
+
+
+def query(geometry=str, geometry_type=str, map_server=str):
+    """Run a query operation on a USGS map service resource and return the
+    requested attributes
+
+    For more see: https://rmgsc.cr.usgs.gov/arcgis/sdk/rest/index.html#//02ss0000000r000000
+
+    Parameters
+    ----------
+    geometry : str
+        An ESRI geometry in JSON format.
+    geometry_type : str
+        The `geometryType` parameter corresponding to `geometry`.
+    map_server : str
+        The map server to query. Options are `ecu`.
+
+    Returns
+    -------
+    Response
+    """
+    # Map ECU to the parameters of the server instance to be queried. "ecu" is
+    # an abstraction that aligns with "wte" and other map servers.
+    if map_server == "ecu":
+        layer = "0"
+        map_server = "gceVector"
+        if geometry_type == "esriGeometryPoint" or "point":
+            geometry = convert_point_to_envelope(geometry)
+    base = (
+        "https://rmgsc.cr.usgs.gov/arcgis/rest/services/" +
+        map_server +
+        "/MapServer/" +
+        layer +
+        "/query"
+    )
+    payload = {
+        "f": "geojson",
+        "geometry": geometry,
+        "geometryType": geometry_type,
+        "where": "1=1",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "*"
     }
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
     return Response(r.json())
@@ -571,6 +624,51 @@ def summarize_wte_results(wte_df):
         df_grouped = df_grouped.sort_values(by="count", ascending=False)
         res[col] = df_grouped.set_index(col).to_dict()["count"]
     return res
+
+
+def convert_point_to_envelope(point, buffer=0.5):
+    """Convert an esriGeometryPoint to an esriGeometryEnvelope
+
+    Parameters
+    ----------
+    point : dict
+        An esriGeometryPoint
+    buffer : float
+        The distance in kilometers to buffer the point. The buffer is a radius
+        around the point. The default is 0.5.
+
+    Returns
+    -------
+    str : ESRI JSON envelope geometry
+
+    Notes
+    -----
+    This function assumes the coordinate reference system of the input
+    geometry is EPSG:4326.
+    """
+    point = json.loads(point)
+    df = pd.DataFrame([{'longitude': point["x"], 'latitude': point["y"]}])
+    gdf = gpd.GeoDataFrame(
+        df,
+        geometry=gpd.points_from_xy(
+            df.longitude,
+            df.latitude
+        ),
+        crs='EPSG:4326'
+    )
+    # TODO Verify the consequences of projecting to an arbitrary CRS
+    #  for sake of buffering.
+    gdf = gdf.to_crs("EPSG:32634")  # A CRS in units of meters
+    gdf.geometry = gdf.geometry.buffer(buffer*1000)  # Convert to meters
+    bounds = gdf.to_crs("EPSG:4326").bounds
+    envelope = {
+        "xmin": bounds.minx[0],
+        "ymin": bounds.miny[0],
+        "xmax": bounds.maxx[0],
+        "ymax": bounds.maxy[0],
+        "spatialReference": point["spatialReference"]
+    }
+    return json.dumps(envelope)
 
 
 if __name__ == "__main__":

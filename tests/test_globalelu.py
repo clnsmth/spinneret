@@ -3,6 +3,7 @@ from difflib import ndiff
 import filecmp
 import tempfile
 import os
+import json
 from os.path import join, splitext, getsize, getmtime, basename, exists
 import glob
 import pytest
@@ -38,7 +39,8 @@ def test_eml_to_wte_json():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Each EML file in the src/spinneret/data/eml/ directory should be
         # converted to a json file and saved to an output directory.
-        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/", output_dir=tmpdir)
+        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
+                                  output_dir=tmpdir)
         fpaths_out = os.listdir(tmpdir)
         for f in fnames_in:
             assert f + ".json" in fpaths_out
@@ -49,7 +51,8 @@ def test_eml_to_wte_json():
         # file.
         os.remove(join(tmpdir, fnames_in[0] + ".json"))
         assert exists(join(tmpdir, fnames_in[0] + ".json")) is False
-        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/", output_dir=tmpdir)
+        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
+                                  output_dir=tmpdir)
         assert exists(join(tmpdir, fnames_in[0] + ".json")) is True
 
         # Additionally, existing json files should not be overwritten
@@ -59,12 +62,14 @@ def test_eml_to_wte_json():
         for f in fnames_in:
             dates[f] = getmtime(join(tmpdir, f + ".json"))
         # Run the function again without overwriting existing json files
-        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/", output_dir=tmpdir)
+        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
+                                  output_dir=tmpdir)
         for f in fnames_in:
             assert getmtime(join(tmpdir, f + ".json")) == dates[f]
         # Run the function again with overwriting existing json files
         globalelu.eml_to_wte_json(
-            eml_dir="src/spinneret/data/eml/", output_dir=tmpdir, overwrite=True
+            eml_dir="src/spinneret/data/eml/", output_dir=tmpdir,
+            overwrite=True
         )
         for f in fnames_in:
             assert getmtime(join(tmpdir, f + ".json")) != dates[f]
@@ -83,11 +88,10 @@ def test_eml_to_wte_json():
 def test_identify(geocov):
     """Test the identify() function.
 
-    # The identify function queries a map service and returns a response
-    # object. The response object's attributes differ based on the geometry
-    # type and the specific map service that was queried. This test checks
-    # that the response object is not None and that the attributes are of the
-    correct type.
+    The identify function queries a map service and returns a response object.
+    The response object's attributes differ based on the geometry type and the
+    specific map service that was queried. This test checks that the response
+    object is not None and that the attributes are of the correct type.
     """
     # Look for expected WTE response attributes
     for g in geocov:
@@ -99,9 +103,15 @@ def test_identify(geocov):
         )
         if gtype == "esriGeometryPoint":
             assert r is not None
+            # FIXME This logic does not garuntee the following assertions are
+            #  ever run. It could be that WTE never has a positive ecosystem
+            #  response. Better is prescribe the set of geographic coverages
+            #  that are expected to resolve to WTE. See test_query() for a
+            #  working example.
             if r.has_ecosystem(source="wte"):
                 # TODO assert points return one ecosystem
-                expected_attributes = globalelu.Attributes(source="wte").data.keys()
+                expected_attributes = globalelu.Attributes(
+                    source="wte").data.keys()
                 for attr in expected_attributes:
                     assert attr in r.get_attributes([attr]).keys()
                     assert len(r.get_attributes([attr])[attr][0]) > 0
@@ -109,6 +119,43 @@ def test_identify(geocov):
         # elif gtype == "esriGeometryEnvelope":
         #     # TODO Large envelopes contain > 1 ecosystem
         #     assert type(res.get_attributes(["Landforms"])) is list
+        # elif gtype == "esriGeometryPolygon":
+        #     # TODO Large polygons contain > 1 ecosystem
+        #     assert type(res.get_attributes(["Landforms"])) is list
+
+
+def test_query(geocov):
+    """Test the query() function.
+
+    The query function queries a map service and returns a response object.
+    The response object's attributes differ based on the specific map service
+    that was queried. This test checks that the response object is not None
+    and that the attributes are of the correct type.
+    """
+    # Query the ECU map service with the set of geographic coverages expected
+    # to successfully resolve to one or more ECUs.
+    geocov_ecu = [geocov[8], geocov[9]]
+    for g in geocov_ecu:
+        gtype = g.geom_type(schema="esri")
+        # TODO If an automated routine sends a point geometry to the query ECU
+        # operation, the point should be wrapped with a default buffer and the
+        # query results obtained. Control of the buffer should be enabled as
+        # a parameter to enable retries at large buffer sizes, in the case
+        # where resolution fails.
+        r = globalelu.query(
+            geometry=g.to_esri_geometry(),
+            geometry_type=gtype,
+            map_server="ecu"
+        )
+        if gtype == "esriGeometryEnvelope":
+            if r.has_ecosystem(source="ecu"):
+                # TODO assert points return one ecosystem
+                expected_attributes = globalelu.Attributes(
+                    source="ecu").data.keys()
+                for attr in expected_attributes:
+                    assert attr in r.get_attributes([attr]).keys()
+                    assert len(r.get_attributes([attr])[attr][0]) > 0
+            assert type(r.get_attributes(["Landforms"])) is list
         # elif gtype == "esriGeometryPolygon":
         #     # TODO Large polygons contain > 1 ecosystem
         #     assert type(res.get_attributes(["Landforms"])) is list
@@ -221,3 +268,22 @@ def test_get_attributes(geocov):
 #             assert set(attrs["WTE"][a].keys()) == {"label", "annotation"}
 #             assert attrs["WTE"][a]["label"] is None
 #             assert attrs["WTE"][a]["annotation"] is None
+
+
+def test_convert_point_to_envelope(geocov):
+    """Test the convert_point_to_envelope() function.
+
+    The convert_point_to_envelope() function should return an ESRI envelope
+    as a JSON string. The envelope should contain the point and have a spatial
+    reference of 4326.
+    """
+    point = geocov[8].to_esri_geometry()  # A point location
+    res = globalelu.convert_point_to_envelope(point)
+    assert isinstance(res, str)
+    point = json.loads(point)  # Convert to dict for comparison
+    res = json.loads(res)
+    assert point["x"] > res["xmin"]
+    assert point["x"] < res["xmax"]
+    assert point["y"] > res["ymin"]
+    assert point["y"] < res["ymax"]
+    assert res["spatialReference"]["wkid"] == 4326
