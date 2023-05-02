@@ -163,6 +163,26 @@
           <southBoundingCoordinate>37.913</southBoundingCoordinate>
         </boundingCoordinates>
       </geographicCoverage>
+      <!-- For testing purposes, do not remove. -->
+      <geographicCoverage>
+        <geographicDescription>Point location on land resolving to WTE and then ECU when expanded into an envelope.</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-124.691</westBoundingCoordinate>
+          <eastBoundingCoordinate>-124.691</eastBoundingCoordinate>
+          <northBoundingCoordinate>48.248</northBoundingCoordinate>
+          <southBoundingCoordinate>48.248</southBoundingCoordinate>
+        </boundingCoordinates>
+      </geographicCoverage>
+      <!-- For testing purposes, do not remove. -->
+      <geographicCoverage>
+        <geographicDescription>Envelop enclosing multiple ECUs.</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-122.437</westBoundingCoordinate>
+          <eastBoundingCoordinate>-122.266</eastBoundingCoordinate>
+          <northBoundingCoordinate>47.866</northBoundingCoordinate>
+          <southBoundingCoordinate>47.529</southBoundingCoordinate>
+        </boundingCoordinates>
+      </geographicCoverage>
       <temporalCoverage>
         <rangeOfDates>
           <beginDate>
