@@ -118,11 +118,28 @@ class Attributes:
                 "Climate_Re": {"label": None, "annotation": None},
                 "ClassName": {"label": None, "annotation": None},
             }
+        elif source == "ecu":
+            self.data = {
+                "Slope": {"label": None, "annotation": None},
+                "Sinuosity": {"label": None, "annotation": None},
+                "Erodibility": {"label": None, "annotation": None},
+                "Temperature and Moisture Regime": {"label": None, "annotation": None},
+                "River Discharge": {"label": None, "annotation": None},
+                "Wave Height": {"label": None, "annotation": None},
+                "Tidal Range": {"label": None, "annotation": None},
+                "Marine Physical Environment": {"label": None, "annotation": None},
+                "Turbidity": {"label": None, "annotation": None},
+                "Chlorophyll": {"label": None, "annotation": None},
+                "CSU_Descriptor": {"label": None, "annotation": None}
+            }
 
     def set_attributes(self, response, source):
-        attributes = Attributes(source="wte")
+        attributes = Attributes(source=source)
         if source == "wte":
             attributes.set_wte_attributes(response)
+            self.data = attributes.data
+        elif source == "ecu":
+            attributes.set_ecu_attributes(response)
             self.data = attributes.data
 
     @staticmethod
@@ -187,6 +204,52 @@ class Attributes:
         self.data = self.data
 
 
+    def set_ecu_attributes(self, response):
+        for attribute in self.data.keys():
+            label = response.get_attributes([attribute])[attribute][0]
+            if attribute == "Climate_Re":
+                # Climate_Re is a composite class composed of Temperatur
+                # and Moisture classes.
+                annotation = (
+                    "("
+                    + self.data["Temperatur"].get("annotation")
+                    + "|"
+                    + self.data["Moisture"].get("annotation")
+                    + ")"
+                )
+                self.data[attribute] = {
+                    "label": label,
+                    "annotation": annotation
+                }
+            elif attribute == "ClassName":
+                # ClassName is a composite class composed of Temperatur,
+                # Moisture, Landcover, and Landforms classes.
+                annotation = (
+                    "("
+                    + self.data["Temperatur"].get("annotation")
+                    + "|"
+                    + self.data["Moisture"].get("annotation")
+                    + ")"
+                    + "|"
+                    + self.data["Landcover"].get("annotation")
+                    + "|"
+                    + self.data["Landforms"].get("annotation")
+                )
+                self.data[attribute] = {
+                    "label": label,
+                    "annotation": annotation
+                }
+            else:
+                # All other classes are single classes, which resolve to
+                # terms listed in the SSSOM file, and which compose the
+                # composite classes of Climate_Re and ClassName.
+                self.data[attribute] = {
+                    "label": label,
+                    "annotation": self.get_annotation(label, source="wte"),
+                }
+        self.data = self.data
+
+
 class Response:
     """A class to parse the response from the identify operation
 
@@ -200,7 +263,8 @@ class Response:
         self.json = json
 
     def get_attributes(self, attributes):
-        """Parse attributes of identify function's response
+        """Recursively get attributes of a response from an identify or query
+        opperation.
 
         Parameters
         ----------
@@ -216,6 +280,9 @@ class Response:
             A dictionary of the requested attributes and their values.
 
         """
+        # TODO Get attributes/features by source? This would simplify the
+        #  methods calls, unless this functionality is needed elsewhere (e.g.
+        #  getting other names from response dictionaries).
         res = {}
         for a in attributes:
             res[a] = _json_extract(self.json, a)
@@ -241,19 +308,18 @@ class Response:
 
     def has_ecosystem(self, source):
         if source == "wte":
-            pv = _json_extract(self.json, "Pixel Value")
-            if len(pv) == 0:
+            res = _json_extract(self.json, "Pixel Value")
+            if len(res) == 0:
                 return False
-            if len(pv) > 0 and pv[0] == "NoData":
+            if len(res) > 0 and res[0] == "NoData":
                 return False
             return True
         elif source == "ecu":
-            pv = _json_extract(self.json, "Pixel Value")
-            if len(pv) == 0:
+            res = len(self.json["features"])
+            if res == 0:
                 return False
-            if len(pv) > 0 and pv[0] == "NoData":
-                return False
-            return True
+            if res > 0:
+                return True
         return None
 
 
@@ -320,13 +386,21 @@ def query(geometry=str, geometry_type=str, map_server=str):
     -------
     Response
     """
-    # Map ECU to the parameters of the server instance to be queried. "ecu" is
-    # an abstraction that aligns with "wte" and other map servers.
+    # Convert "ecu" to query parameters. The "ecu" abstraction is used to
+    # align the UX with usage of "wte".
     if map_server == "ecu":
         layer = "0"
         map_server = "gceVector"
-        if geometry_type == "esriGeometryPoint" or "point":
-            geometry = convert_point_to_envelope(geometry)
+        # Convert point geometries to envelopes. This is necessary because
+        # the query map service does not support point geometries.
+        # TODO Move this block out a level to operate on all map servers?
+        if geometry_type == "esriGeometryPoint" or geometry_type == "point":
+            # A buffer radius of 0.5 km should gaurantee overlap of coastal
+            # sampling locations, represented by point geometries, and location
+            # of ECUs. This is a conservative estimate of the spatial
+            # accuracy between the point location and nearby ECUs.
+            geometry = convert_point_to_envelope(geometry, buffer=0.5)
+            geometry_type = "esriGeometryEnvelope"
     base = (
         "https://rmgsc.cr.usgs.gov/arcgis/rest/services/" +
         map_server +
@@ -340,7 +414,15 @@ def query(geometry=str, geometry_type=str, map_server=str):
         "geometryType": geometry_type,
         "where": "1=1",
         "spatialRel": "esriSpatialRelIntersects",
-        "outFields": "*"
+        "outFields": "*",
+        "returnGeometry": "false",
+        "returnTrueCurves": "false",
+        "returnIdsOnly": "false",
+        "returnCountOnly": "false",
+        "returnZ": "false",
+        "returnM": "false",
+        "returnDistinctValues": "true",
+        "returnExtentOnly": "false"
     }
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
     return Response(r.json())
@@ -408,6 +490,10 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 base.add_location(location)
                 continue
             # Identify the ecosystem(s) at the location.
+            # TODO Query all map servers with the same geometry, and append
+            #  results to the location object.
+
+            # Start of get_ecosystem("wte") ----------------------------------
             if g.geom_type() == "point":
                 location.add_comments("WTE: Was queried.")
                 try:
@@ -419,8 +505,6 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 except ConnectionError:
                     r = None
                 if r is not None:
-                    # TODO Iterate over all results (i.e. ecosystems) and add
-                    #  to the location object.
                     # Build the ecosystem object and add it to the location. If
                     # the location could not be resolved, or has no ecosystems,
                     # add an explanatory comment to the location object to
@@ -438,6 +522,8 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                     location.add_ecosystem(ecosystem)
                 else:
                     continue
+            # End of get_ecosystem("wte") ------------------------------------
+
             # Add the location, and its ecosystems, to the base object.
             base.add_location(location)
         # Write the base object to a json file. Empty locations indicate no

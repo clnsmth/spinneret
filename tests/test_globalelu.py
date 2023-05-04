@@ -132,30 +132,41 @@ def test_query(geocov):
     that was queried. This test checks that the response object is not None
     and that the attributes are of the correct type.
     """
-    # Query the ECU map service with the set of geographic coverages expected
-    # to successfully resolve to one or more ECUs.
+    # Query the ECU server with a set of geographic coverages known to resolve
+    # to one or more ECUs.
     geocov_ecu = [geocov[8], geocov[9]]
     for g in geocov_ecu:
         gtype = g.geom_type(schema="esri")
-        # TODO If an automated routine sends a point geometry to the query ECU
-        # operation, the point should be wrapped with a default buffer and the
-        # query results obtained. Control of the buffer should be enabled as
-        # a parameter to enable retries at large buffer sizes, in the case
-        # where resolution fails.
         r = globalelu.query(
             geometry=g.to_esri_geometry(),
             geometry_type=gtype,
             map_server="ecu"
         )
-        if gtype == "esriGeometryEnvelope":
+        assert r is not None
+        # FIXME this is a copy of the identify test above
+        if gtype == "esriGeometryEnvelope" or gtype == "esriGeometryPoint":
             if r.has_ecosystem(source="ecu"):
-                # TODO assert points return one ecosystem
                 expected_attributes = globalelu.Attributes(
                     source="ecu").data.keys()
                 for attr in expected_attributes:
                     assert attr in r.get_attributes([attr]).keys()
                     assert len(r.get_attributes([attr])[attr][0]) > 0
-            assert type(r.get_attributes(["Landforms"])) is list
+
+        # FIXME These assertions belong in other tests
+        assert len(r.json.get("features")) > 0
+        features = r.get_attributes(["CSU_Descriptor"])["CSU_Descriptor"]
+        assert len(features) > 0
+        assert len(set(features)) == 2
+
+        # Get unique features
+        features = set(features)
+        # Split on commas and remove whitespace
+        features = [f.split(",") for f in features]
+        features[0] = [f.strip() for f in features[0]]
+
+        assert len(features[0]) == 10  # 10 features per ECU
+
+        # TODO An empty features list is returned when the geometry does not resolve to ECU
         # elif gtype == "esriGeometryPolygon":
         #     # TODO Large polygons contain > 1 ecosystem
         #     assert type(res.get_attributes(["Landforms"])) is list
@@ -287,3 +298,40 @@ def test_convert_point_to_envelope(geocov):
     assert point["y"] > res["ymin"]
     assert point["y"] < res["ymax"]
     assert res["spatialReference"]["wkid"] == 4326
+
+
+def test_has_ecosystem(geocov):
+    # Geometries over land areas have a WTE ecosystem
+    g = geocov[1]
+    r = globalelu.identify(
+        geometry=g.to_esri_geometry(),
+        geometry_type=g.geom_type(schema="esri"),
+        map_server="wte"
+    )
+    assert r.has_ecosystem('wte') is True
+    # Geometries over water bodies, or outside the WTE area, don't have a WTE
+    # ecosystem.
+    geocov_ecu = [geocov[4], geocov[6]]
+    for g in geocov_ecu:
+        r = globalelu.identify(
+            geometry=g.to_esri_geometry(),
+            geometry_type=g.geom_type(schema="esri"),
+            map_server="wte"
+        )
+        assert r.has_ecosystem('wte') is False
+    # Geometries near the coast have a ECU ecosystem
+    g = geocov[8]
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=g.geom_type(schema="esri"),
+        map_server="ecu"
+    )
+    assert r.has_ecosystem('ecu') is True
+    # Geometries far from the coast don't have a ECU ecosystem
+    g = geocov[0]
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=g.geom_type(schema="esri"),
+        map_server="ecu"
+    )
+    assert r.has_ecosystem('ecu') is False
