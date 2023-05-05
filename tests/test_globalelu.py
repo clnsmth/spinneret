@@ -129,11 +129,15 @@ def test_query(geocov):
 
     The query function queries a map service and returns a response object.
     The response object's attributes differ based on the specific map service
-    that was queried. This test checks that the response object is not None
-    and that the attributes are of the correct type.
+    that was queried. This test checks that the response object has a set of
+    ecosystems when queried with a geographic coverage that is known to resolve
+    to one or more ecosystems. This test also checks that the response object
+    has no ecosystems when queried with a geographic coverage that is known to
+    not resolve to one or more ecosystems.
     """
-    # Query the ECU server with a set of geographic coverages known to resolve
-    # to one or more ECUs.
+    # Query the ECU server with a geographic coverage known to resolve to one
+    # or more ECUs.
+    # TODO Refactor to use a ESRI geometry fixture rather than geocov?
     geocov_ecu = [geocov[8], geocov[9]]
     for g in geocov_ecu:
         gtype = g.geom_type(schema="esri")
@@ -325,6 +329,29 @@ def test_has_ecosystem(geocov):
     assert r.has_ecosystem('ecu') is False
 
 
+def test_set_wte_attributes(geocov):
+    # Query the WTE server with a geographic coverages known to resolve
+    # to one or more WTEs.
+    g = geocov[1]
+    gtype = g.geom_type(schema="esri")
+    r = globalelu.identify(
+        geometry=g.to_esri_geometry(),
+        geometry_type=gtype,
+        map_server="wte"
+    )
+    attributes = globalelu.Attributes('wte')
+    attributes.set_wte_attributes(r)
+    assert len(attributes.data) == 6
+    assert isinstance(attributes.data, dict)
+    assert attributes.data.keys() == globalelu.Attributes('wte').data.keys()
+    for attribute in attributes.data:
+        assert isinstance(attributes.data[attribute], dict)
+        assert attributes.data[attribute].keys() == \
+               globalelu.Attributes('wte').data[attribute].keys()
+        assert attributes.data[attribute]['label'] is not None
+        assert attributes.data[attribute]['annotation'] is not None
+
+
 def test_set_ecu_attributes(geocov):
     # Query the ECU server with a set of geographic coverages known to resolve
     # to one or more ECUs.
@@ -335,29 +362,32 @@ def test_set_ecu_attributes(geocov):
         geometry_type=gtype,
         map_server="ecu"
     )
-    # FIXME Note, these are a prototype of the innerworkings of a set_ecosystems() function.
+    # FIXME Note, these are a prototype of the innerworkings of a set_ecosystems() wrapper function.
     #  This is for temporary testing/dev purposes.
-    unique_ecosystem_attributes = r.get_unique_ecosystems(source='ecu')  # Get unique ecosystems listed in the response
-    one_attribute_set = next(iter(unique_ecosystem_attributes))  # Iteration begins
+    unique_ecosystem_attributes = r.get_unique_ecosystems(
+        source='ecu')  # Get unique ecosystems listed in the response
+    one_attribute_set = next(
+        iter(unique_ecosystem_attributes))  # Iteration begins
     attributes = globalelu.Attributes('ecu')
     attributes.set_ecu_attributes(one_attribute_set)
+    assert len(attributes.data) == 11
+    assert isinstance(attributes.data, dict)
+    assert attributes.data.keys() == globalelu.Attributes('ecu').data.keys()
+    for attribute in attributes.data:
+        assert isinstance(attributes.data[attribute], dict)
+        assert attributes.data[attribute].keys() == \
+               globalelu.Attributes('ecu').data[attribute].keys()
+        assert attributes.data[attribute]['label'] is not None
+        assert attributes.data[attribute]['annotation'] is not None
 
-    assert len(r.json.get("features")) > 0
-    features = r.get_attributes(["CSU_Descriptor"])["CSU_Descriptor"]
-    assert len(features) > 0
-    assert len(set(features)) == 2  # Testing unique features
 
-
-    # Query the ECU server with a geographic coverage that is known to
-    # not resolve to one or more ECUs.
-    g = geocov[0]
-    gtype = g.geom_type(schema="esri")
+def test_get_ecu_ecosystems(geocov):
+    g = geocov[9]
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
+        geometry_type=g.geom_type(schema="esri"),
         map_server="ecu"
     )
-    assert r is not None
-    assert r.has_ecosystem('ecu') is False
-
-    assert False
+    ecosystems = r.get_ecu_ecosystems()
+    assert isinstance(ecosystems, list)
+    assert len(ecosystems) == 34

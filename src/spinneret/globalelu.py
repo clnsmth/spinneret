@@ -5,8 +5,6 @@ import json
 import requests
 import pandas as pd
 import geopandas as gpd
-import matplotlib.pyplot as plt
-from shapely.geometry import Point
 from spinneret.utilities import user_agent
 from spinneret.eml import get_geographic_coverage
 
@@ -133,36 +131,18 @@ class Attributes:
                 "CSU_Descriptor": {"label": None, "annotation": None}
             }
 
-    def set_attributes(self, response, source):
+    def set_attributes(self, unique_ecosystem_attributes, source):
         attributes = Attributes(source=source)
         if source == "wte":
-            attributes.set_wte_attributes(response)
+            attributes.set_wte_attributes(unique_ecosystem_attributes)
             self.data = attributes.data
         elif source == "ecu":
-            attributes.set_ecu_attributes(response)
+            attributes.set_ecu_attributes(unique_ecosystem_attributes)
             self.data = attributes.data
 
-    @staticmethod
-    def get_annotation(label, source):
-        if source == "wte":
-            with open(
-                    "src/spinneret/data/sssom/wte-envo.sssom.tsv",
-                    mode="r",
-                    encoding="utf-8"
-            ) as f:
-                sssom = pd.read_csv(f, sep="\t")
-            sssom["subject_label"] = sssom["subject_label"].str.lower()
-        elif source == "ecu":
-            return "Placeholder"  # TODO - add ECU sssom and parse
-        res = sssom.loc[
-            sssom["subject_label"] == label.lower(),
-            "object_id"
-        ].values[0]
-        return res
-
-    def set_wte_attributes(self, response):
+    def set_wte_attributes(self, unique_ecosystem_attributes):
         for attribute in self.data.keys():
-            label = response.get_attributes([attribute])[attribute][0]
+            label = unique_ecosystem_attributes.get_attributes([attribute])[attribute][0]  #FIXME This isn't a response, it is a list of dictionaries. See set_ecu_attributes() method for example.
             if attribute == "Climate_Re":
                 # Climate_Re is a composite class composed of Temperatur
                 # and Moisture classes.
@@ -247,6 +227,24 @@ class Attributes:
         # Append to results
         self.data = self.data
 
+    @staticmethod
+    def get_annotation(label, source):
+        if source == "wte":
+            with open(
+                    "src/spinneret/data/sssom/wte-envo.sssom.tsv",
+                    mode="r",
+                    encoding="utf-8"
+            ) as f:
+                sssom = pd.read_csv(f, sep="\t")
+            sssom["subject_label"] = sssom["subject_label"].str.lower()
+        elif source == "ecu":
+            return "Placeholder"  # TODO - add ECU sssom and parse
+        res = sssom.loc[
+            sssom["subject_label"] == label.lower(),
+            "object_id"
+        ].values[0]
+        return res
+
 
 class Response:
     """A class to parse the response from the identify operation
@@ -324,7 +322,8 @@ class Response:
         # TODO Note this paralells get_attributes() in some ways. May want to
         #  rename this function after that one. They serve slightly different
         #  purposes. The current name of this function is a bit misleading.
-        #  A better name may be create_ecosystem_attribute_iterable().
+        #  A better name may be create_ecosystem_attribute_iterable(), or
+        #  get_unique_ecosystem_attributes().
         if source == 'wte':
             pass
         if source == 'ecu':
@@ -332,6 +331,44 @@ class Response:
             descriptors = self.get_attributes([attribute])[attribute]
             descriptors = set(descriptors)
             return descriptors
+
+    def get_ecosystems(self, source):
+        if source == "wte":
+            res = self.get_wte_ecosystems()
+        if source == "ecu":
+            res = self.get_ecu_ecosystems()
+        return res
+
+    def get_wte_ecosystems(self):
+        # TODO Refactor the current implementation into this one (which is the get_ecu_ecosystems() implementation).
+        ecosystems = []
+        unique_wte_ecosystems = self.get_unique_ecosystems(source="wte")
+        for unique_wte_ecosystem in unique_wte_ecosystems:
+            ecosystem = Ecosystem()
+            ecosystem.set_source("wte")
+            ecosystem.set_version(None)
+            attributes = Attributes(source="wte")
+            attributes.set_attributes(unique_ecosystem_attributes=unique_wte_ecosystem,
+                                      # FIXME This isn't a response. Should refactor for consistency.
+                                      source="wte")
+            ecosystem.add_attributes(attributes)
+            ecosystems.append(ecosystem.data)
+        return ecosystems
+
+    def get_ecu_ecosystems(self):
+        ecosystems = []
+        unique_ecu_ecosystems = self.get_unique_ecosystems(source="ecu")
+        for unique_ecu_ecosystem in unique_ecu_ecosystems:
+            ecosystem = Ecosystem()
+            ecosystem.set_source("ecu")
+            ecosystem.set_version(None)
+            attributes = Attributes(source="ecu")
+            attributes.set_attributes(unique_ecosystem_attributes=unique_ecu_ecosystem,
+                                      source="ecu")
+            ecosystem.add_attributes(attributes)
+            ecosystems.append(ecosystem.data)
+        return ecosystems
+
 
 
 
@@ -495,19 +532,10 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             location = Location()
             location.set_description(g.description())
             location.set_geometry_type(g.geom_type())
-            if g.geom_type() != "point":
-                location.add_comments(
-                    "Envelopes and polygons are unsupported at this time."
-                )
-                base.add_location(location)
-                continue
-            # Identify the ecosystem(s) at the location.
-            # TODO Query all map servers with the same geometry, and append
-            #  results to the location object.
 
-            # TODO Wrap the code below into a single function
-            # Start of get_ecosystem("wte") ----------------------------------
-            # Inputs are the geometry and geometry type and location object
+            # Identify all ecosystems at the location (i.e. for the geometry)
+
+            # Query the WTE map server
             if g.geom_type() == "point":
                 location.add_comments("WTE: Was queried.")
                 try:
@@ -518,38 +546,39 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                     )
                 except ConnectionError:
                     r = None
-                # TODO Iterate over ecosystems in response and returns a list
-                #  of ecosystems.
-                #  The resultant list of ecosystems should be appended to the
-                #  location via add_ecosystem().
-                # TODO Convert response to iterable. Deduplicate ecosystems
-                #  then iterate over the list to build ecosystem objects.
                 if r is not None:
-                    # Build the ecosystem object and add it to the location. If
-                    # the location could not be resolved, or has no ecosystems,
-                    # add an explanatory comment to the location object to
-                    # facilitate understanding and analysis.
-                    if not r.has_ecosystem(source="wte"):
+                    # Build the ecosystem object and add it to the location.
+                    if r.has_ecosystem(source="wte"):
+                        ecosystems = r.get_ecosystems(source="wte")
+                        location.add_ecosystem(ecosystems)
+                    else:
+                        # Add an explanatory comment if not resolved, to
+                        # facilitate understanding and analysis.
                         location.add_comments(r.get_comments("wte"))
-                        base.add_location(location)
-                        continue
-                    ecosystem = Ecosystem()
-                    ecosystem.set_source("wte")
-                    ecosystem.set_version(None)
-                    attributes = Attributes(source="wte")
-                    attributes.set_attributes(response=r, source="wte")
-                    ecosystem.add_attributes(attributes)
-                    location.add_ecosystem(ecosystem)
-                else:
-                    continue
-            # End of get_ecosystem("wte") ------------------------------------
 
-            # TODO Wrap the code below into a single function
-            # Start of get_ecosystem("ecu") ----------------------------------
-            # Inputs are the geometry and geometry type and location object
-            # Iteration over ecosystems is required
-            # TODO Develop this
-            # End of get_ecosystem("ecu") ------------------------------------
+
+            # Query the ECU map server
+            # TODO Preempt polygons from being queried? (Not sure if they are supported)
+            try:
+                r = query(
+                    geometry=g.to_esri_geometry(),
+                    geometry_type=g.geom_type(schema="esri"),
+                    map_server="ecu"
+                )
+            except ConnectionError:
+                r = None
+            if r is not None:
+                # Build the ecosystem object and add it to the location.
+                if r.has_ecosystem(source="ecu"):
+                    ecosystems = r.get_ecosystems(source="ecu")
+                    location.add_ecosystem(ecosystems)
+                else:
+                    # Add an explanatory comment if not resolved, to
+                    # facilitate understanding and analysis.
+                    location.add_comments(r.get_comments("ecu"))
+
+            # TODO Query the MEU map server
+            # TODO Query the Freshwater map server
 
             # Add the location, and its ecosystems, to the base object.
             base.add_location(location)
