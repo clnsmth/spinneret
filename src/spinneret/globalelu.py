@@ -152,6 +152,8 @@ class Attributes:
             ) as f:
                 sssom = pd.read_csv(f, sep="\t")
             sssom["subject_label"] = sssom["subject_label"].str.lower()
+        elif source == "ecu":
+            return "Placeholder"  # TODO - add ECU sssom and parse
         res = sssom.loc[
             sssom["subject_label"] == label.lower(),
             "object_id"
@@ -204,49 +206,45 @@ class Attributes:
         self.data = self.data
 
 
-    def set_ecu_attributes(self, response):
-        for attribute in self.data.keys():
-            label = response.get_attributes([attribute])[attribute][0]
-            if attribute == "Climate_Re":
-                # Climate_Re is a composite class composed of Temperatur
-                # and Moisture classes.
-                annotation = (
-                    "("
-                    + self.data["Temperatur"].get("annotation")
-                    + "|"
-                    + self.data["Moisture"].get("annotation")
-                    + ")"
-                )
-                self.data[attribute] = {
-                    "label": label,
-                    "annotation": annotation
-                }
-            elif attribute == "ClassName":
-                # ClassName is a composite class composed of Temperatur,
-                # Moisture, Landcover, and Landforms classes.
-                annotation = (
-                    "("
-                    + self.data["Temperatur"].get("annotation")
-                    + "|"
-                    + self.data["Moisture"].get("annotation")
-                    + ")"
-                    + "|"
-                    + self.data["Landcover"].get("annotation")
-                    + "|"
-                    + self.data["Landforms"].get("annotation")
-                )
-                self.data[attribute] = {
-                    "label": label,
-                    "annotation": annotation
-                }
-            else:
-                # All other classes are single classes, which resolve to
-                # terms listed in the SSSOM file, and which compose the
-                # composite classes of Climate_Re and ClassName.
-                self.data[attribute] = {
-                    "label": label,
-                    "annotation": self.get_annotation(label, source="wte"),
-                }
+    def set_ecu_attributes(self, unique_ecosystem_attributes):
+        # There is only one attribute for ECU, CSU_Descriptor, which is
+        # composed of 10 atomic attributes.
+        descriptors = unique_ecosystem_attributes
+        # Atomize: Split on commas and remove whitespace
+        descriptors = descriptors.split(",")
+        descriptors = [g.strip() for g in descriptors]
+        atomic_attribute_labels = self.data.keys()
+        # Zip descriptors and atomic attribute labels
+        ecosystems = [dict(zip(atomic_attribute_labels, descriptors))]
+        # Iterate over atomic attributes and set labels and annotations
+        ecosystem = ecosystems[0]
+        # attributes = {}
+        # self.data
+        for attribute in ecosystem.keys():
+            label = ecosystem.get(attribute)
+            self.data[attribute] = {
+                "label": label,
+                "annotation": self.get_annotation(label, source="ecu"),
+            }
+        # Add composite CSU_Description class and annotation.
+        # Get ecosystems values and join with commas
+        # TODO Fix issue where an attribute from the initialized list returned by
+        #  Attributes() was missing for some reason and thus an annotation couldn't
+        #  be found for it. If arbitrary joining of empties to the annotation string
+        #  is done, then the annotation may be wrong. Best to just leave it out.
+        CSU_Descriptor = [f.get("label") for f in self.data.values()]
+        # Knock of the last one, which is CSU_Descriptor
+        CSU_Descriptor = CSU_Descriptor[:-1]
+        CSU_Descriptor = ", ".join(CSU_Descriptor)
+        CSU_Descriptor_annotation = [f.get("annotation") for f in self.data.values()]
+        # Knock of the last one, which is CSU_Descriptor
+        CSU_Descriptor_annotation = CSU_Descriptor_annotation[:-1]
+        CSU_Descriptor_annotation = "|".join(CSU_Descriptor_annotation)
+        self.data["CSU_Descriptor"] = {
+            "label": CSU_Descriptor,
+            "annotation": CSU_Descriptor_annotation
+        }
+        # Append to results
         self.data = self.data
 
 
@@ -321,6 +319,20 @@ class Response:
             if res > 0:
                 return True
         return None
+
+    def get_unique_ecosystems(self, source):
+        # TODO Note this paralells get_attributes() in some ways. May want to
+        #  rename this function after that one. They serve slightly different
+        #  purposes. The current name of this function is a bit misleading.
+        #  A better name may be create_ecosystem_attribute_iterable().
+        if source == 'wte':
+            pass
+        if source == 'ecu':
+            attribute = "CSU_Descriptor"
+            descriptors = self.get_attributes([attribute])[attribute]
+            descriptors = set(descriptors)
+            return descriptors
+
 
 
 def identify(geometry=str, geometry_type=str, map_server=str):
@@ -493,7 +505,9 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             # TODO Query all map servers with the same geometry, and append
             #  results to the location object.
 
+            # TODO Wrap the code below into a single function
             # Start of get_ecosystem("wte") ----------------------------------
+            # Inputs are the geometry and geometry type and location object
             if g.geom_type() == "point":
                 location.add_comments("WTE: Was queried.")
                 try:
@@ -504,6 +518,12 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                     )
                 except ConnectionError:
                     r = None
+                # TODO Iterate over ecosystems in response and returns a list
+                #  of ecosystems.
+                #  The resultant list of ecosystems should be appended to the
+                #  location via add_ecosystem().
+                # TODO Convert response to iterable. Deduplicate ecosystems
+                #  then iterate over the list to build ecosystem objects.
                 if r is not None:
                     # Build the ecosystem object and add it to the location. If
                     # the location could not be resolved, or has no ecosystems,
@@ -523,6 +543,13 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 else:
                     continue
             # End of get_ecosystem("wte") ------------------------------------
+
+            # TODO Wrap the code below into a single function
+            # Start of get_ecosystem("ecu") ----------------------------------
+            # Inputs are the geometry and geometry type and location object
+            # Iteration over ecosystems is required
+            # TODO Develop this
+            # End of get_ecosystem("ecu") ------------------------------------
 
             # Add the location, and its ecosystems, to the base object.
             base.add_location(location)
