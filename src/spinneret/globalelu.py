@@ -187,6 +187,15 @@ class Attributes:
 
 
     def set_ecu_attributes(self, unique_ecosystem_attributes):
+        """Set attributes for ECU.
+
+        Parameters
+        ----------
+        unique_ecosystem_attributes : str
+            Dictionary of unique ecosystem attributes.
+        """
+        if len(unique_ecosystem_attributes) == 0:
+            return None
         # There is only one attribute for ECU, CSU_Descriptor, which is
         # composed of 10 atomic attributes.
         descriptors = unique_ecosystem_attributes
@@ -319,6 +328,19 @@ class Response:
         return None
 
     def get_unique_ecosystems(self, source):
+        """Get unique ecosystems from a response
+
+        Parameters
+        ----------
+        source : str
+            The source of the response. Either "wte" or "ecu".
+
+        Returns
+        -------
+        res : set
+            A set of unique ecosystems in the response, in the format of the
+            response object (i.e. not processed).
+        """
         # TODO Note this paralells get_attributes() in some ways. May want to
         #  rename this function after that one. They serve slightly different
         #  purposes. The current name of this function is a bit misleading.
