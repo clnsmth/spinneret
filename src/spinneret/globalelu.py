@@ -77,9 +77,20 @@ class Location:
         self.data["geometry_type"] = geometry_type
 
     def add_comments(self, comments):
+        # TODO should not add anything if is an empty list or None,
         self.data["comments"].append(comments)
 
     def add_ecosystem(self, ecosystem):
+        # TODO When no ecosystems were resolved against a source, then nothing
+        #  should be added to the list of Location.data.ecosystems. Not even
+        #  None values, or empty lists, because appending these actually result
+        #  in a None value or empty list being added. Whereas we want nothing
+        #  to be added. This logic can be applied here in the add_ecosystem()
+        #  method, or in the wrapper function developing at line 583. The current
+        #  implementation pattern for a similar method, add_attributes, is to
+        #  add anything that is passed to it, thereby making the user of the
+        #  method, currently a wrapper function, responsible for ensuring the
+        #  object is not an empty list or None before being appended.
         self.data["ecosystem"].append(ecosystem.data)
 
 
@@ -99,6 +110,7 @@ class Ecosystem:
         self.data["version"] = version
 
     def add_comments(self, comments):
+        # TODO should not add anything if is an empty list or None,
         self.data["comments"].append(comments)
 
     def add_attributes(self, attributes):

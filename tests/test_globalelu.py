@@ -20,11 +20,36 @@ def geocov():
     res = eml.get_geographic_coverage(eml="src/spinneret/data/eml/edi.1.1.xml")
     return res
 
-def test_Ecosystem():
-    """Test the Ecosystem class __init__() function.
+def test_Location_init():
+    assert False
+
+def test_set_identifier():
+    assert False
+
+
+def test_set_description():
+    assert False
+
+
+def test_set_geometry_type():
+    assert False
+
+
+def test_add_comments():
+    assert False
+
+
+def test_add_ecosystem():
+    assert False
+
+
+
+def test_Ecosystem_init():
+    """Test the Ecosystem class __init__ method.
 
     The Ecosystem class should be initialized with a data attribute containing
-    a dictionary with a set of expected names and values."""
+    a dictionary with a set of expected names and values for the ecosystem
+    component of the data model."""
     ecosystem = globalelu.Ecosystem()
     expected_attributes = ['source', 'version', 'comments', 'attributes']
     assert isinstance(ecosystem.data, dict)
@@ -37,9 +62,9 @@ def test_Ecosystem():
 
 
 def test_set_source():
-    """Test the Ecosystem class set_source() method.
+    """Test the Ecosystem class set_source method.
 
-    The set_source() method should set the source attribute of the Ecosystem
+    The set_source method should set the source attribute of the Ecosystem
     class instance."""
     ecosystem = globalelu.Ecosystem()
     assert ecosystem.data['source'] is None
@@ -48,9 +73,9 @@ def test_set_source():
 
 
 def test_set_version():
-    """Test the Ecosystem class set_version() method.
+    """Test the Ecosystem class set_version method.
 
-    The set_version() method should set the version attribute of the Ecosystem
+    The set_version method should set the version attribute of the Ecosystem
     class instance."""
     ecosystem = globalelu.Ecosystem()
     assert ecosystem.data['version'] is None
@@ -59,9 +84,9 @@ def test_set_version():
 
 
 def test_add_comments():
-    """Test the Ecosystem class add_comments() method.
+    """Test the Ecosystem class add_comments method.
 
-    The add_comments() method should append a comment to the comments
+    The add_comments method should append a comment to the comments
     attribute of the Ecosystem class instance."""
     ecosystem = globalelu.Ecosystem()
     assert ecosystem.data['comments'] == []
@@ -69,20 +94,137 @@ def test_add_comments():
     assert ecosystem.data['comments'] == ['This is a comment.']
     ecosystem.add_comments('This is another comment.')
     assert ecosystem.data['comments'] == ['This is a comment.',
-                                            'This is another comment.']
+                                          'This is another comment.']
+
+
+def test_Attributes_init():
+    """Test the Attributes class __init__ method.
+
+    The Attributes class should be initialized with a data attribute containing
+    a dictionary configured with a set of source specific attributes. Each
+    attribute should have a corresponding dictionary with label and annotation
+    fields."""
+    for source in ['wte', 'ecu']:
+        if source == 'wte':
+            attributes = globalelu.Attributes(source='wte')
+            expected_attributes = [
+                "Temperatur",
+                "Moisture",
+                "Landcover",
+                "Landforms",
+                "Climate_Re",
+                "ClassName"
+            ]
+        elif source == 'ecu':
+            attributes = globalelu.Attributes(source='ecu')
+            expected_attributes = [
+                "Slope",
+                "Sinuosity",
+                "Erodibility",
+                "Temperature and Moisture Regime",
+                "River Discharge",
+                "Wave Height",
+                "Tidal Range",
+                "Marine Physical Environment",
+                "Turbidity",
+                "Chlorophyll",
+                "CSU_Descriptor"
+            ]
+        assert isinstance(attributes.data, dict)
+        for attribute in expected_attributes:
+            assert attribute in attributes.data.keys()
+            assert isinstance(attributes.data[attribute], dict)
+            assert 'label' in attributes.data[attribute].keys()
+            assert 'annotation' in attributes.data[attribute].keys()
+            assert isinstance(attributes.data[attribute]['label'],
+                              None.__class__)
+            assert isinstance(attributes.data[attribute]['annotation'],
+                              None.__class__)
+
+
+def test_set_wte_attributes(geocov):
+    # Query the WTE server with a geographic coverages known to resolve
+    # to one or more WTEs.
+    g = geocov[1]
+    gtype = g.geom_type(schema="esri")
+    r = globalelu.identify(
+        geometry=g.to_esri_geometry(),
+        geometry_type=gtype,
+        map_server="wte"
+    )
+    attributes = globalelu.Attributes('wte')
+    attributes.set_wte_attributes(r)
+    assert len(attributes.data) == 6
+    assert isinstance(attributes.data, dict)
+    assert attributes.data.keys() == globalelu.Attributes('wte').data.keys()
+    for attribute in attributes.data:
+        assert isinstance(attributes.data[attribute], dict)
+        assert attributes.data[attribute].keys() == \
+               globalelu.Attributes('wte').data[attribute].keys()
+        assert attributes.data[attribute]['label'] is not None
+        assert attributes.data[attribute]['annotation'] is not None
+
+
+def test_set_ecu_attributes(geocov):
+    """Test the set_ecu_attributes() function.
+
+    The set_ecu_attributes() method should take the data from an ECU query
+    response, parse the components, and set the corresponding values in the
+    fields of an Attributes class instance data attribute. These attributes
+    should have the expected value types for the label and annotation fields.
+    A successful query should return a dictionary with the set of expected
+    attributes. An unsuccessful query should return None, with the result of
+    not modifying the data attribute of the associated Attributes class
+    instance.
+    """
+    # Successful query
+    g = geocov[9]
+    gtype = g.geom_type(schema="esri")
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=gtype,
+        map_server="ecu"
+    )
+    raw_ecosystems = r.get_unique_ecosystems(source='ecu')
+    for raw_ecosystem in raw_ecosystems:
+        attributes = globalelu.Attributes('ecu')
+        attributes.set_ecu_attributes(raw_ecosystem)
+        assert isinstance(attributes.data, dict)
+        assert len(attributes.data) == 11
+        assert attributes.data.keys() == globalelu.Attributes(
+            'ecu').data.keys()
+        for attribute in attributes.data:
+            assert isinstance(attributes.data[attribute], dict)
+            assert attributes.data[attribute].keys() == \
+                   globalelu.Attributes('ecu').data[attribute].keys()
+            assert attributes.data[attribute]['label'] is not None
+            assert attributes.data[attribute]['annotation'] is not None
+    # Unsuccessful query
+    g = geocov[1]
+    gtype = g.geom_type(schema="esri")
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=gtype,
+        map_server="ecu"
+    )
+    raw_ecosystems = r.get_unique_ecosystems(source='ecu')
+    attributes = globalelu.Attributes('ecu')
+    attributes.set_ecu_attributes(raw_ecosystems)
+    assert attributes.data == globalelu.Attributes('ecu').data
+
 
 def test_add_attributes():
-    """Test the Ecosystem class add_attributes() method.
+    """Test the Ecosystem class add_attributes method.
 
-    The add_attributes() method should add a dictionary of attributes to the
-    attributes attribute of the Ecosystem class instance."""
+    The add_attributes method should add a dictionary of attributes to the
+    data attribute of the Ecosystem class instance, regardless if the
+    Attributes class instance is the default or whether it is set with
+    attributes from an set_attributes method."""
     ecosystem = globalelu.Ecosystem()
     assert isinstance(ecosystem.data['attributes'], None.__class__)
     attributes = globalelu.Attributes('ecu')
     ecosystem.add_attributes(attributes)
     assert isinstance(ecosystem.data['attributes'], dict)
-
-
 
 
 def test_eml_to_wte_json():
@@ -211,7 +353,8 @@ def test_query(geocov):
         )
         assert r is not None
         expected_attributes = "CSU_Descriptor"  # ECU has one attribute
-        attributes = r.get_attributes([expected_attributes])[expected_attributes]
+        attributes = r.get_attributes([expected_attributes])[
+            expected_attributes]
         assert isinstance(attributes[0], str)
         assert len(attributes[0]) > 0
         # Query the ECU server with a geographic coverage that is known to
@@ -392,85 +535,13 @@ def test_has_ecosystem(geocov):
     assert r.has_ecosystem('ecu') is False
 
 
-def test_set_wte_attributes(geocov):
-    # Query the WTE server with a geographic coverages known to resolve
-    # to one or more WTEs.
-    g = geocov[1]
-    gtype = g.geom_type(schema="esri")
-    r = globalelu.identify(
-        geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
-        map_server="wte"
-    )
-    attributes = globalelu.Attributes('wte')
-    attributes.set_wte_attributes(r)
-    assert len(attributes.data) == 6
-    assert isinstance(attributes.data, dict)
-    assert attributes.data.keys() == globalelu.Attributes('wte').data.keys()
-    for attribute in attributes.data:
-        assert isinstance(attributes.data[attribute], dict)
-        assert attributes.data[attribute].keys() == \
-               globalelu.Attributes('wte').data[attribute].keys()
-        assert attributes.data[attribute]['label'] is not None
-        assert attributes.data[attribute]['annotation'] is not None
-
-
-def test_set_ecu_attributes(geocov):
-    """Test the set_ecu_attributes() function.
-
-    The set_ecu_attributes() method should take a response from an ECU
-    query and convert it into the format of the data model with all the
-    expected names and values."""
-    # Query the ECU server with a set of geographic coverages known to resolve
-    # to one or more ECUs.
-    g = geocov[9]
-    gtype = g.geom_type(schema="esri")
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
-        map_server="ecu"
-    )
-    unique_ecosystem_attributes = r.get_unique_ecosystems(
-        source='ecu')  # Get unique ecosystems listed in the response
-    one_attribute_set = next(
-        iter(unique_ecosystem_attributes))  # Iteration begins
-    attributes = globalelu.Attributes('ecu')
-    attributes.set_ecu_attributes(one_attribute_set)
-    assert len(attributes.data) == 11
-    assert isinstance(attributes.data, dict)
-    assert attributes.data.keys() == globalelu.Attributes('ecu').data.keys()
-    for attribute in attributes.data:
-        assert isinstance(attributes.data[attribute], dict)
-        assert attributes.data[attribute].keys() == \
-               globalelu.Attributes('ecu').data[attribute].keys()
-        assert attributes.data[attribute]['label'] is not None
-        assert attributes.data[attribute]['annotation'] is not None
-    # Query the ECU server with a set of geographic coverages known to not
-    # resolve to one or more ECUs. This should return the default Attribute
-    # data model.
-    g = geocov[1]
-    gtype = g.geom_type(schema="esri")
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
-        map_server="ecu"
-    )
-    unique_ecosystem_attributes = r.get_unique_ecosystems(
-        source='ecu')  # Get unique ecosystems listed in the response
-    attributes = globalelu.Attributes('ecu')
-    attributes.set_ecu_attributes(unique_ecosystem_attributes)
-    assert attributes.data == globalelu.Attributes('ecu').data
-
-
 def test_get_ecu_ecosystems(geocov):
-    """Test the get_ecu_ecosystems() function.
+    """Test the get_ecu_ecosystems() function
 
-    The get_ecu_ecosystems() function should return a list of ECU ecosystems
-    for a given geometry. The list should contain at least one ecosystem when
-    the geometry is over an ECU area, otherwise it should be empty.
+    A successful query should return a non-empty list of ECU ecosystems. An
+    unsuccessful query should return an empty list.
     """
-    # Query the ECU server with a set of geographic coverages known to resolve
-    # to one or more ECUs.
+    # Successful query
     g = geocov[9]
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
@@ -480,8 +551,7 @@ def test_get_ecu_ecosystems(geocov):
     ecosystems = r.get_ecu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) > 0
-    # Query the ECU server with a set of geographic coverages known to not
-    # resolve to one or more ECUs.
+    # Unsuccessful query
     g = geocov[1]
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
@@ -494,13 +564,18 @@ def test_get_ecu_ecosystems(geocov):
 
 
 def test_get_unique_ecosystems(geocov):
-    """Test the get_unique_ecosystems() function.
+    """Test the get_unique_ecosystems method.
 
-    The get_unique_ecosystems() function should return a set of unique
-    ecosystems for a given geometry.
+    The get_unique_ecosystems method should return a set of unique ecosystems
+    contained in a given server response object. The way ecosystems are
+    expressed by each server (in JSON format) differs, so the function should
+    be capable of recognizing the format and parsing it accordingly. The set
+    object returned by the get_unique_ecosystems method enables iterative
+    parsing of the contents by the builder routine of the get_ecu_ecosystems,
+    and get_wte_ecosystems methods of the Response object.
     """
-    # Query the ECU server with a set of geographic coverages known to resolve
-    # to one or more ECUs.
+    # Test a successful response from the ECU server query (i.e. a response
+    # that contains one or more ecosystems).
     g = geocov[9]
     gtype = g.geom_type(schema="esri")
     r = globalelu.query(
@@ -508,15 +583,15 @@ def test_get_unique_ecosystems(geocov):
         geometry_type=gtype,
         map_server="ecu"
     )
-    ecosystems_full_list = r.get_attributes(["CSU_Descriptor"])[
+    full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])[
         "CSU_Descriptor"]
-    ecosystems_unique = r.get_unique_ecosystems(source='ecu')
-    assert len(ecosystems_full_list) == 123
-    assert isinstance(ecosystems_unique, set)
-    assert len(ecosystems_unique) == 34
-    assert ecosystems_unique == set(ecosystems_full_list)
-    # Query the ECU server with a set of geographic coverages known to not
-    # resolve to one or more ECUs.
+    unique_ecosystems = r.get_unique_ecosystems(source='ecu')
+    assert isinstance(unique_ecosystems, set)
+    assert len(full_list_of_ecosystems) == 123
+    assert len(unique_ecosystems) == 34
+    assert unique_ecosystems == set(full_list_of_ecosystems)
+    # Test an unsuccessful response from the ECU server query (i.e. a response
+    # that contains no ecosystems).
     g = geocov[1]
     gtype = g.geom_type(schema="esri")
     r = globalelu.query(
@@ -524,7 +599,13 @@ def test_get_unique_ecosystems(geocov):
         geometry_type=gtype,
         map_server="ecu"
     )
-    ecosystems_unique = r.get_unique_ecosystems(source='ecu')
-    assert isinstance(ecosystems_unique, set)
-    assert len(ecosystems_unique) == 0
+    full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])[
+        "CSU_Descriptor"]
+    unique_ecosystems = r.get_unique_ecosystems(source='ecu')
+    assert isinstance(unique_ecosystems, set)
+    assert len(full_list_of_ecosystems) == 0
+    assert len(unique_ecosystems) == 0
+    assert unique_ecosystems == set(full_list_of_ecosystems)
+    # TODO Test WTE server response successful
+    # TODO Test WTE server response unsuccessful
 
