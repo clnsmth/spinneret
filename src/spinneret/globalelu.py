@@ -81,17 +81,9 @@ class Location:
         self.data["comments"].append(comments)
 
     def add_ecosystem(self, ecosystem):
-        # TODO When no ecosystems were resolved against a source, then nothing
-        #  should be added to the list of Location.data.ecosystems. Not even
-        #  None values, or empty lists, because appending these actually result
-        #  in a None value or empty list being added. Whereas we want nothing
-        #  to be added. This logic can be applied here in the add_ecosystem()
-        #  method, or in the wrapper function developing at line 583. The current
-        #  implementation pattern for a similar method, add_attributes, is to
-        #  add anything that is passed to it, thereby making the user of the
-        #  method, currently a wrapper function, responsible for ensuring the
-        #  object is not an empty list or None before being appended.
-        self.data["ecosystem"].append(ecosystem.data)
+        # TODO should not add anything if is an empty list or None,?
+        for item in ecosystem:
+            self.data["ecosystem"].append(item)
 
 
 class Ecosystem:
@@ -114,6 +106,7 @@ class Ecosystem:
         self.data["comments"].append(comments)
 
     def add_attributes(self, attributes):
+        # TODO should not add anything if is an empty list or None,?
         self.data["attributes"] = attributes.data
 
 
@@ -629,7 +622,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                     else:
                         # Add an explanatory comment if not resolved, to
                         # facilitate understanding and analysis.
-                        location.add_comments(r.get_comments("ecu"))
+                        location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
 
             # TODO Query the MEU map server
             # TODO Query the Freshwater map server
@@ -871,17 +864,19 @@ if __name__ == "__main__":
 
     print("42")
 
-    # # Transform EML to WTE ecosystems and write to json file
+    # # Transform EML to ecosystems and write to json file
+    # # For the spinneret package
     # res = eml_to_wte_json(
     #     eml_dir="/Users/csmith/Code/spinneret/src/spinneret/data/eml/",
     #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
     #     overwrite=True
     # )
-    # res = eml_to_wte_json(
-    #     eml_dir="/Users/csmith/Data/edi/eml/",
-    #     output_dir="/Users/csmith/Data/edi/json/",
-    #     overwrite=True
-    # )
+    # For local testing
+    eml_to_wte_json(
+        eml_dir="/Users/csmith/Data/edi/eml/",
+        output_dir="/Users/csmith/Data/edi/json/",
+        overwrite=True
+    )
 
     # # Combine json files into a single dataframe
     # df = wte_json_to_df(json_dir="/Users/csmith/Data/edi/json/")

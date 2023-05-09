@@ -60,7 +60,7 @@ def test_add_ecosystem():
     ecosystem = globalelu.Ecosystem()
     assert isinstance(location.data['ecosystem'], list)
     assert len(location.data['ecosystem']) == 0
-    location.add_ecosystem(ecosystem)
+    location.add_ecosystem(ecosystem.data)
     assert isinstance(location.data['ecosystem'][0], dict)
     assert len(location.data['ecosystem']) == 1
     location.add_ecosystem(ecosystem)
