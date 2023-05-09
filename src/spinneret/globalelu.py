@@ -153,8 +153,10 @@ class Attributes:
             self.data = attributes.data
 
     def set_wte_attributes(self, unique_ecosystem_attributes):
+        if len(unique_ecosystem_attributes) == 0:
+            return None
         for attribute in self.data.keys():
-            label = unique_ecosystem_attributes.get_attributes([attribute])[attribute][0]  #FIXME This isn't a response, it is a list of dictionaries. See set_ecu_attributes() method for example.
+            label = unique_ecosystem_attributes[attribute]
             if attribute == "Climate_Re":
                 # Climate_Re is a composite class composed of Temperatur
                 # and Moisture classes.
@@ -193,7 +195,7 @@ class Attributes:
                 # composite classes of Climate_Re and ClassName.
                 self.data[attribute] = {
                     "label": label,
-                    "annotation": self.get_annotation(label, source="wte"),
+                    "annotation": self.get_annotation(label, source="wte")
                 }
         self.data = self.data
 
@@ -349,19 +351,21 @@ class Response:
 
         Returns
         -------
-        res : set
-            A set of unique ecosystems in the response, in the format of the
-            response object (i.e. not processed).
+        res : list
+            A list of unique ecosystems in the response, in the format of the
+            response object (i.e. not parsed to data model).
         """
-        # TODO Note this paralells get_attributes() in some ways. May want to
-        #  rename this function after that one. They serve slightly different
-        #  purposes. The current name of this function is a bit misleading.
-        #  A better name may be create_ecosystem_attribute_iterable(), or
-        #  get_unique_ecosystem_attributes().
+        #  TODO Note this paralells get_attributes() in some ways. May want to
+        #   rename this function after that one. They serve slightly different
+        #   purposes. The current name of this function is a bit misleading.
+        #   A better name may be create_ecosystem_attribute_iterable(), or
+        #   get_unique_ecosystem_attributes().
         if source == 'wte':
             # Parse the attributes of the ecosystems listed in the response
             # object in a form that can be compared and used to render the list
             # of unique ecosystems returned by the identify operation.
+            if not self.has_ecosystem(source="wte"):
+                return list()
             descriptors = []
             attributes = Attributes(source="wte").data.keys()
             results = self.json.get("results")
@@ -369,17 +373,18 @@ class Response:
                 res = dict()
                 for attribute in attributes:
                     res[attribute] = result['attributes'].get(attribute)
-                # FIXME check for an unsuccessful response and don't append
-                #  if it is unsuccessful. Ultimately, an empty set should be
-                #  returned.
                 res = json.dumps(res)
                 descriptors.append(res)
             descriptors = set(descriptors)
+            descriptors = [json.loads(d) for d in descriptors]
             return descriptors
         if source == 'ecu':
+            if not self.has_ecosystem(source="ecu"):
+                return list()
             attribute = "CSU_Descriptor"
             descriptors = self.get_attributes([attribute])[attribute]
             descriptors = set(descriptors)
+            descriptors = list(descriptors)
             return descriptors
 
     def get_ecosystems(self, source):
@@ -392,14 +397,12 @@ class Response:
     def get_wte_ecosystems(self):
         ecosystems = []
         unique_wte_ecosystems = self.get_unique_ecosystems(source="wte")
-        # TODO This should be a list of dictionaries containing wte attributes
         for unique_wte_ecosystem in unique_wte_ecosystems:
             ecosystem = Ecosystem()
             ecosystem.set_source("wte")
             ecosystem.set_version(None)
             attributes = Attributes(source="wte")
             attributes.set_attributes(unique_ecosystem_attributes=unique_wte_ecosystem,
-                                      # FIXME This isn't a response. Should refactor for consistency.
                                       source="wte")
             ecosystem.add_attributes(attributes)
             ecosystems.append(ecosystem.data)
@@ -608,24 +611,25 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
 
 
             # Query the ECU map server
-            # TODO Preempt polygons from being queried? (Not sure if they are supported)
-            try:
-                r = query(
-                    geometry=g.to_esri_geometry(),
-                    geometry_type=g.geom_type(schema="esri"),
-                    map_server="ecu"
-                )
-            except ConnectionError:
-                r = None
-            if r is not None:
-                # Build the ecosystem object and add it to the location.
-                if r.has_ecosystem(source="ecu"):
-                    ecosystems = r.get_ecosystems(source="ecu")
-                    location.add_ecosystem(ecosystems)
-                else:
-                    # Add an explanatory comment if not resolved, to
-                    # facilitate understanding and analysis.
-                    location.add_comments(r.get_comments("ecu"))
+            if g.geom_type() == "point" or g.geom_type() == "envelope":
+                location.add_comments("ECU: Was queried.")
+                try:
+                    r = query(
+                        geometry=g.to_esri_geometry(),
+                        geometry_type=g.geom_type(schema="esri"),
+                        map_server="ecu"
+                    )
+                except ConnectionError:
+                    r = None
+                if r is not None:
+                    # Build the ecosystem object and add it to the location.
+                    if r.has_ecosystem(source="ecu"):
+                        ecosystems = r.get_ecosystems(source="ecu")
+                        location.add_ecosystem(ecosystems)
+                    else:
+                        # Add an explanatory comment if not resolved, to
+                        # facilitate understanding and analysis.
+                        location.add_comments(r.get_comments("ecu"))
 
             # TODO Query the MEU map server
             # TODO Query the Freshwater map server

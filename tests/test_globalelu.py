@@ -167,8 +167,18 @@ def test_Attributes_init():
 
 
 def test_set_wte_attributes(geocov):
-    # Query the WTE server with a geographic coverages known to resolve
-    # to one or more WTEs.
+    """Test the set_wte_attributes method.
+
+    The set_wte_attributes method should take the data from a WTE identify
+    response, parse the components, and set the corresponding values in the
+    fields of an Attributes class instance data attribute. These attributes
+    should have the expected value types for the label and annotation fields.
+    A successful query should return a dictionary with the set of expected
+    attributes. An unsuccessful query should return None, with the result of
+    not modifying the data attribute of the associated Attributes class
+    instance.
+    """
+    # Successful query
     g = geocov[1]
     gtype = g.geom_type(schema="esri")
     r = globalelu.identify(
@@ -176,23 +186,37 @@ def test_set_wte_attributes(geocov):
         geometry_type=gtype,
         map_server="wte"
     )
+    raw_ecosystems = r.get_unique_ecosystems(source='wte')
+    for raw_ecosystem in raw_ecosystems:
+        attributes = globalelu.Attributes('wte')
+        attributes.set_wte_attributes(raw_ecosystem)
+        assert len(attributes.data) == 6
+        assert isinstance(attributes.data, dict)
+        assert attributes.data.keys() == globalelu.Attributes('wte').data.keys()
+        for attribute in attributes.data:
+            assert isinstance(attributes.data[attribute], dict)
+            assert attributes.data[attribute].keys() == \
+                   globalelu.Attributes('wte').data[attribute].keys()
+            assert attributes.data[attribute]['label'] is not None
+            assert attributes.data[attribute]['annotation'] is not None
+    # Unsuccessful query
+    g = geocov[2]
+    gtype = g.geom_type(schema="esri")
+    r = globalelu.identify(
+        geometry=g.to_esri_geometry(),
+        geometry_type=gtype,
+        map_server="wte"
+    )
+    raw_ecosystems = r.get_unique_ecosystems(source='wte')
     attributes = globalelu.Attributes('wte')
-    attributes.set_wte_attributes(r)
-    assert len(attributes.data) == 6
-    assert isinstance(attributes.data, dict)
-    assert attributes.data.keys() == globalelu.Attributes('wte').data.keys()
-    for attribute in attributes.data:
-        assert isinstance(attributes.data[attribute], dict)
-        assert attributes.data[attribute].keys() == \
-               globalelu.Attributes('wte').data[attribute].keys()
-        assert attributes.data[attribute]['label'] is not None
-        assert attributes.data[attribute]['annotation'] is not None
+    attributes.set_wte_attributes(raw_ecosystems)
+    assert attributes.data == globalelu.Attributes('wte').data
 
 
 def test_set_ecu_attributes(geocov):
-    """Test the set_ecu_attributes() function.
+    """Test the set_ecu_attributes method.
 
-    The set_ecu_attributes() method should take the data from an ECU query
+    The set_ecu_attributes method should take the data from an ECU query
     response, parse the components, and set the corresponding values in the
     fields of an Attributes class instance data attribute. These attributes
     should have the expected value types for the label and annotation fields.
@@ -594,23 +618,10 @@ def test_get_unique_ecosystems(geocov):
         geometry_type=gtype,
         map_server="wte"
     )
-
-    # TODO add the refactored code below to get the raw list of ecosystems
-    full_list_of_ecosystems = []
-    attributes = globalelu.Attributes(source="wte").data.keys()
-    results = r.json.get("results")
-    for result in results:
-        res = dict()
-        for attribute in attributes:
-            res[attribute] = result['attributes'].get(attribute)
-        res = json.dumps(res)
-        full_list_of_ecosystems.append(res)
-
     unique_ecosystems = r.get_unique_ecosystems(source='wte')
-    assert isinstance(unique_ecosystems, set)
-    assert len(full_list_of_ecosystems) == 1
+    assert isinstance(unique_ecosystems, list)
+    assert len(unique_ecosystems) == len(r.json.get("results"))
     assert len(unique_ecosystems) == 1
-    assert unique_ecosystems == set(full_list_of_ecosystems)
     # Test an unsuccessful response from the wte server identify operation
     # (i.e. a response that contains no ecosystem).
     g = geocov[2]
@@ -620,22 +631,9 @@ def test_get_unique_ecosystems(geocov):
         geometry_type=gtype,
         map_server="wte"
     )
-    # TODO add the refactored code below to get the raw list of ecosystems
-    # full_list_of_ecosystems = []
-    # attributes = globalelu.Attributes(source="wte").data.keys()
-    # results = r.json.get("results")
-    # for result in results:
-    #     res = dict()
-    #     for attribute in attributes:
-    #         res[attribute] = result['attributes'].get(attribute)
-    #     res = json.dumps(res)
-    #     full_list_of_ecosystems.append(res)
-
-    unique_ecosystems = r.get_unique_ecosystems(source='wte')  # FIXME the response here should be an empty set
-    assert isinstance(unique_ecosystems, set)
-    assert len(full_list_of_ecosystems) == 0
+    unique_ecosystems = r.get_unique_ecosystems(source='wte')
+    assert isinstance(unique_ecosystems, list)
     assert len(unique_ecosystems) == 0
-    assert unique_ecosystems == set(full_list_of_ecosystems)
 
     # Test a successful response from the ECU server query (i.e. a response
     # that contains one or more ecosystems).
@@ -649,10 +647,10 @@ def test_get_unique_ecosystems(geocov):
     full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])[
         "CSU_Descriptor"]
     unique_ecosystems = r.get_unique_ecosystems(source='ecu')
-    assert isinstance(unique_ecosystems, set)
+    assert isinstance(unique_ecosystems, list)
     assert len(full_list_of_ecosystems) == 123
     assert len(unique_ecosystems) == 34
-    assert unique_ecosystems == set(full_list_of_ecosystems)
+    assert unique_ecosystems == list(set(full_list_of_ecosystems))
     # Test an unsuccessful response from the ECU server query (i.e. a response
     # that contains no ecosystems).
     g = geocov[1]
@@ -665,23 +663,23 @@ def test_get_unique_ecosystems(geocov):
     full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])[
         "CSU_Descriptor"]
     unique_ecosystems = r.get_unique_ecosystems(source='ecu')
-    assert isinstance(unique_ecosystems, set)
+    assert isinstance(unique_ecosystems, list)
     assert len(full_list_of_ecosystems) == 0
     assert len(unique_ecosystems) == 0
-    assert unique_ecosystems == set(full_list_of_ecosystems)
+    assert unique_ecosystems == list(set(full_list_of_ecosystems))
 
 def test_eml_to_wte_json():
     """Test the eml_to_wte_json() function.
 
     Each EML file in the src/spinneret/data/eml/ directory should be converted
     to a json file and saved to an output directory. When an EML file is
-    missing a corresponding json file, the eml_to_wte_json() function
-    should fill the gap by creating the json file. Additionally, existing json
-    files should not be overwritten unless the overwrite flag is set to
-    True. Furthermore, output files should have the same content as the
-    fixtures in src/spinneret/data/json/. This content check verifies both the
-    structural components of the response object and the logic of
-    eml_to_wte_json() that populates the structure with data.
+    missing, the eml_to_wte_json() function should fill the gap by creating
+    the json file. Additionally, existing json files should not be overwritten
+    unless the overwrite flag is set to True. Furthermore, output files should
+    have the same content as the fixtures in src/spinneret/data/json/. This
+    content check verifies both the structural components of the response
+    object and the logic of eml_to_wte_json() that populates the structure
+    with data.
     """
     fpaths_in = glob.glob("src/spinneret/data/eml/" + "*.xml")
     fnames_in = [splitext(basename(f))[0] for f in fpaths_in]
