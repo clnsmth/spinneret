@@ -359,7 +359,23 @@ class Response:
         #  A better name may be create_ecosystem_attribute_iterable(), or
         #  get_unique_ecosystem_attributes().
         if source == 'wte':
-            pass
+            # Parse the attributes of the ecosystems listed in the response
+            # object in a form that can be compared and used to render the list
+            # of unique ecosystems returned by the identify operation.
+            descriptors = []
+            attributes = Attributes(source="wte").data.keys()
+            results = self.json.get("results")
+            for result in results:
+                res = dict()
+                for attribute in attributes:
+                    res[attribute] = result['attributes'].get(attribute)
+                # FIXME check for an unsuccessful response and don't append
+                #  if it is unsuccessful. Ultimately, an empty set should be
+                #  returned.
+                res = json.dumps(res)
+                descriptors.append(res)
+            descriptors = set(descriptors)
+            return descriptors
         if source == 'ecu':
             attribute = "CSU_Descriptor"
             descriptors = self.get_attributes([attribute])[attribute]
@@ -374,9 +390,9 @@ class Response:
         return res
 
     def get_wte_ecosystems(self):
-        # TODO Refactor the current implementation into this one (which is the get_ecu_ecosystems() implementation).
         ecosystems = []
         unique_wte_ecosystems = self.get_unique_ecosystems(source="wte")
+        # TODO This should be a list of dictionaries containing wte attributes
         for unique_wte_ecosystem in unique_wte_ecosystems:
             ecosystem = Ecosystem()
             ecosystem.set_source("wte")

@@ -20,8 +20,10 @@ def geocov():
     res = eml.get_geographic_coverage(eml="src/spinneret/data/eml/edi.1.1.xml")
     return res
 
+
 def test_Location_init():
     assert False
+
 
 def test_set_identifier():
     assert False
@@ -35,13 +37,35 @@ def test_set_geometry_type():
     assert False
 
 
-def test_add_comments():
-    assert False
+def test_add_comments_location():
+    """Test the add_comments method.
+
+    The add_comments method should append a comment to the comments attribute
+    of the Location class instance."""
+    location = globalelu.Location()
+    assert location.data['comments'] == []
+    location.add_comments('This is a comment.')
+    assert location.data['comments'] == ['This is a comment.']
+    location.add_comments('This is another comment.')
+    assert location.data['comments'] == ['This is a comment.',
+                                         'This is another comment.']
 
 
 def test_add_ecosystem():
-    assert False
+    """Test the add_ecosystem method.
 
+    The add_ecosystem method should append an Ecosystem instance to a location
+    class instance's data attribute."""
+    location = globalelu.Location()
+    ecosystem = globalelu.Ecosystem()
+    assert isinstance(location.data['ecosystem'], list)
+    assert len(location.data['ecosystem']) == 0
+    location.add_ecosystem(ecosystem)
+    assert isinstance(location.data['ecosystem'][0], dict)
+    assert len(location.data['ecosystem']) == 1
+    location.add_ecosystem(ecosystem)
+    assert isinstance(location.data['ecosystem'][1], dict)
+    assert len(location.data['ecosystem']) == 2
 
 
 def test_Ecosystem_init():
@@ -83,7 +107,7 @@ def test_set_version():
     assert ecosystem.data['version'] == '1.0'
 
 
-def test_add_comments():
+def test_add_comments_ecosystem():
     """Test the Ecosystem class add_comments method.
 
     The add_comments method should append a comment to the comments
@@ -227,107 +251,55 @@ def test_add_attributes():
     assert isinstance(ecosystem.data['attributes'], dict)
 
 
-def test_eml_to_wte_json():
-    """Test the eml_to_wte_json() function.
-
-    Each EML file in the src/spinneret/data/eml/ directory should be converted
-    to a json file and saved to an output directory. When an EML file is
-    missing a corresponding json file, the eml_to_wte_json() function
-    should fill the gap by creating the json file. Additionally, existing json
-    files should not be overwritten unless the overwrite flag is set to
-    True. Furthermore, output files should have the same content as the
-    fixtures in src/spinneret/data/json/. This content check verifies both the
-    structural components of the response object and the logic of
-    eml_to_wte_json() that populates the structure with data.
-    """
-    fpaths_in = glob.glob("src/spinneret/data/eml/" + "*.xml")
-    fnames_in = [splitext(basename(f))[0] for f in fpaths_in]
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Each EML file in the src/spinneret/data/eml/ directory should be
-        # converted to a json file and saved to an output directory.
-        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
-                                  output_dir=tmpdir)
-        fpaths_out = os.listdir(tmpdir)
-        for f in fnames_in:
-            assert f + ".json" in fpaths_out
-            assert getsize(join(tmpdir, f + ".json")) > 0
-
-        # When an EML file is missing a corresponding json file, the
-        # eml_to_wte_json() function should fill the gap by creating the json
-        # file.
-        os.remove(join(tmpdir, fnames_in[0] + ".json"))
-        assert exists(join(tmpdir, fnames_in[0] + ".json")) is False
-        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
-                                  output_dir=tmpdir)
-        assert exists(join(tmpdir, fnames_in[0] + ".json")) is True
-
-        # Additionally, existing json files should not be overwritten
-        # unless the overwrite flag is set to True.
-        # Get date and time of existing json files
-        dates = {}
-        for f in fnames_in:
-            dates[f] = getmtime(join(tmpdir, f + ".json"))
-        # Run the function again without overwriting existing json files
-        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
-                                  output_dir=tmpdir)
-        for f in fnames_in:
-            assert getmtime(join(tmpdir, f + ".json")) == dates[f]
-        # Run the function again with overwriting existing json files
-        globalelu.eml_to_wte_json(
-            eml_dir="src/spinneret/data/eml/", output_dir=tmpdir,
-            overwrite=True
-        )
-        for f in fnames_in:
-            assert getmtime(join(tmpdir, f + ".json")) != dates[f]
-        # Furthermore, output files should have the same content as the
-        # fixtures in src/spinneret/data/json/. This content check verifies
-        # both the structural components of the response object and the logic
-        # of eml_to_wte_json() that populates the structure with data.
-        for f in fnames_in:
-            filecmp.cmp(
-                join(tmpdir, f + ".json"),
-                join("src/spinneret/data/json/", f + ".json"),
-                shallow=False,
-            )
-
-
 def test_identify(geocov):
     """Test the identify() function.
 
     The identify function queries a map service and returns a response object.
-    The response object's attributes differ based on the geometry type and the
-    specific map service that was queried. This test checks that the response
-    object is not None and that the attributes are of the correct type.
+    The response object's attributes differ based on the specific map service
+    that was queried. This test checks that the response object has an
+    ecosystem when queried with a geographic coverage that is known to resolve
+    to an ecosystem. This test also checks that the response object has no
+    ecosystem when queried with a geographic coverage that is known to not
+    resolve to an ecosystem. This test also checks for known edge cases, such
+    as when a geographic coverage is outside the extent of the map service.
     """
-    # Look for expected WTE response attributes
-    for g in geocov:
+    # Run an identify operation on the WTE server with a set of geographic
+    # coverages known to resolve to a WTE ecosystem.
+    geocov_success = [
+        geocov[0],  # A point on land
+        geocov[1]  # An envelope on land
+    ]
+    for g in geocov_success:
         gtype = g.geom_type(schema="esri")
         r = globalelu.identify(
             geometry=g.to_esri_geometry(),
             geometry_type=gtype,
             map_server="wte",
         )
-        if gtype == "esriGeometryPoint":
-            assert r is not None
-            # FIXME This logic does not garuntee the following assertions are
-            #  ever run. It could be that WTE never has a positive ecosystem
-            #  response. Better is prescribe the set of geographic coverages
-            #  that are expected to resolve to WTE. See test_query() for a
-            #  working example.
-            if r.has_ecosystem(source="wte"):
-                # TODO assert points return one ecosystem
-                expected_attributes = globalelu.Attributes(
-                    source="wte").data.keys()
-                for attr in expected_attributes:
-                    assert attr in r.get_attributes([attr]).keys()
-                    assert len(r.get_attributes([attr])[attr][0]) > 0
-
-        # elif gtype == "esriGeometryEnvelope":
-        #     # TODO Large envelopes contain > 1 ecosystem
-        #     assert type(res.get_attributes(["Landforms"])) is list
-        # elif gtype == "esriGeometryPolygon":
-        #     # TODO Large polygons contain > 1 ecosystem
-        #     assert type(res.get_attributes(["Landforms"])) is list
+        assert r is not None
+        assert isinstance(r, globalelu.Response)
+        assert r.has_ecosystem(source="wte")
+    # Run an identify operation on the WTE server with a geographic coverage
+    # known to not resolve to a WTE ecosystem, because it is either: a location
+    # over the ocean or a freshwater body, an unsupported geometry type (i.e.
+    # envelope or polygon), or a location outside the extent of the map
+    # service.
+    geocov_fail = [
+        geocov[2],  # A polygon
+        geocov[4],  # A point over the ocean
+        geocov[5],  # A point over a freshwater body
+        geocov[6]  # A point outside the WTE map service extent
+    ]
+    for g in geocov_fail:
+        gtype = g.geom_type(schema="esri")
+        r = globalelu.identify(
+            geometry=g.to_esri_geometry(),
+            geometry_type=gtype,
+            map_server="wte",
+        )
+        assert r is not None
+        assert isinstance(r, globalelu.Response)
+        assert r.has_ecosystem(source="wte") is False
 
 
 def test_query(geocov):
@@ -357,17 +329,17 @@ def test_query(geocov):
             expected_attributes]
         assert isinstance(attributes[0], str)
         assert len(attributes[0]) > 0
-        # Query the ECU server with a geographic coverage that is known to
-        # not resolve to one or more ECUs.
-        g = geocov[0]
-        gtype = g.geom_type(schema="esri")
-        r = globalelu.query(
-            geometry=g.to_esri_geometry(),
-            geometry_type=gtype,
-            map_server="ecu"
-        )
-        assert r is not None
-        assert r.has_ecosystem('ecu') is False
+    # Query the ECU server with a geographic coverage that is known to
+    # not resolve to one or more ECUs.
+    g = geocov[0]
+    gtype = g.geom_type(schema="esri")
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=gtype,
+        map_server="ecu"
+    )
+    assert r is not None
+    assert r.has_ecosystem('ecu') is False
 
 
 # def test_wte_json_to_df():
@@ -499,6 +471,14 @@ def test_convert_point_to_envelope(geocov):
 
 
 def test_has_ecosystem(geocov):
+    """Test the has_ecosystem method.
+
+    The has_ecosystem method should return True when the geometry is
+    within the WTE area and False when the geometry is outside the WTE area.
+    Similarly, the has_ecosystem method should return True when the geometry
+    overlaps with an ECU vector and False when the geometry does not overlap
+    with an ECU vector.
+    """
     # Geometries over land areas have a WTE ecosystem
     g = geocov[1]
     r = globalelu.identify(
@@ -533,6 +513,35 @@ def test_has_ecosystem(geocov):
         map_server="ecu"
     )
     assert r.has_ecosystem('ecu') is False
+
+
+def test_get_wte_ecosystems():
+    """Test the get_wte_ecosystems method.
+
+    A successful query should return a non-empty list of WTE ecosystems. An
+    unsuccessful query should return an empty list.
+    """
+    # Successful query
+    g = geocov[1]
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=g.geom_type(schema="esri"),
+        map_server="wte"
+    )
+    ecosystems = r.get_wte_ecosystems()
+    assert isinstance(ecosystems, list)
+    assert len(ecosystems) > 0
+    # Unsuccessful query
+    g = geocov[2]
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=g.geom_type(schema="esri"),
+        map_server="wte"
+    )
+    ecosystems = r.get_wte_ecosystems()
+    assert isinstance(ecosystems, list)
+    assert len(ecosystems) == 0
+
 
 
 def test_get_ecu_ecosystems(geocov):
@@ -571,9 +580,63 @@ def test_get_unique_ecosystems(geocov):
     expressed by each server (in JSON format) differs, so the function should
     be capable of recognizing the format and parsing it accordingly. The set
     object returned by the get_unique_ecosystems method enables iterative
-    parsing of the contents by the builder routine of the get_ecu_ecosystems,
-    and get_wte_ecosystems methods of the Response object.
+    parsing of the contents by the builder routine of the get_wte_ecosystems
+    and get_ecu_ecosystems methods of the Response object. Note, currently,
+    the identify operation used to query the WTE server does not return more
+    than one ecosystem per query.
     """
+    # Test a successful response from the WTE server identify operation (i.e.
+    # a response an ecosystem).
+    g = geocov[1]
+    gtype = g.geom_type(schema="esri")
+    r = globalelu.identify(
+        geometry=g.to_esri_geometry(),
+        geometry_type=gtype,
+        map_server="wte"
+    )
+
+    # TODO add the refactored code below to get the raw list of ecosystems
+    full_list_of_ecosystems = []
+    attributes = globalelu.Attributes(source="wte").data.keys()
+    results = r.json.get("results")
+    for result in results:
+        res = dict()
+        for attribute in attributes:
+            res[attribute] = result['attributes'].get(attribute)
+        res = json.dumps(res)
+        full_list_of_ecosystems.append(res)
+
+    unique_ecosystems = r.get_unique_ecosystems(source='wte')
+    assert isinstance(unique_ecosystems, set)
+    assert len(full_list_of_ecosystems) == 1
+    assert len(unique_ecosystems) == 1
+    assert unique_ecosystems == set(full_list_of_ecosystems)
+    # Test an unsuccessful response from the wte server identify operation
+    # (i.e. a response that contains no ecosystem).
+    g = geocov[2]
+    gtype = g.geom_type(schema="esri")
+    r = globalelu.identify(
+        geometry=g.to_esri_geometry(),
+        geometry_type=gtype,
+        map_server="wte"
+    )
+    # TODO add the refactored code below to get the raw list of ecosystems
+    # full_list_of_ecosystems = []
+    # attributes = globalelu.Attributes(source="wte").data.keys()
+    # results = r.json.get("results")
+    # for result in results:
+    #     res = dict()
+    #     for attribute in attributes:
+    #         res[attribute] = result['attributes'].get(attribute)
+    #     res = json.dumps(res)
+    #     full_list_of_ecosystems.append(res)
+
+    unique_ecosystems = r.get_unique_ecosystems(source='wte')  # FIXME the response here should be an empty set
+    assert isinstance(unique_ecosystems, set)
+    assert len(full_list_of_ecosystems) == 0
+    assert len(unique_ecosystems) == 0
+    assert unique_ecosystems == set(full_list_of_ecosystems)
+
     # Test a successful response from the ECU server query (i.e. a response
     # that contains one or more ecosystems).
     g = geocov[9]
@@ -606,6 +669,66 @@ def test_get_unique_ecosystems(geocov):
     assert len(full_list_of_ecosystems) == 0
     assert len(unique_ecosystems) == 0
     assert unique_ecosystems == set(full_list_of_ecosystems)
-    # TODO Test WTE server response successful
-    # TODO Test WTE server response unsuccessful
 
+def test_eml_to_wte_json():
+    """Test the eml_to_wte_json() function.
+
+    Each EML file in the src/spinneret/data/eml/ directory should be converted
+    to a json file and saved to an output directory. When an EML file is
+    missing a corresponding json file, the eml_to_wte_json() function
+    should fill the gap by creating the json file. Additionally, existing json
+    files should not be overwritten unless the overwrite flag is set to
+    True. Furthermore, output files should have the same content as the
+    fixtures in src/spinneret/data/json/. This content check verifies both the
+    structural components of the response object and the logic of
+    eml_to_wte_json() that populates the structure with data.
+    """
+    fpaths_in = glob.glob("src/spinneret/data/eml/" + "*.xml")
+    fnames_in = [splitext(basename(f))[0] for f in fpaths_in]
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Each EML file in the src/spinneret/data/eml/ directory should be
+        # converted to a json file and saved to an output directory.
+        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
+                                  output_dir=tmpdir)
+        fpaths_out = os.listdir(tmpdir)
+        for f in fnames_in:
+            assert f + ".json" in fpaths_out
+            assert getsize(join(tmpdir, f + ".json")) > 0
+
+        # When an EML file is missing a corresponding json file, the
+        # eml_to_wte_json() function should fill the gap by creating the json
+        # file.
+        os.remove(join(tmpdir, fnames_in[0] + ".json"))
+        assert exists(join(tmpdir, fnames_in[0] + ".json")) is False
+        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
+                                  output_dir=tmpdir)
+        assert exists(join(tmpdir, fnames_in[0] + ".json")) is True
+
+        # Additionally, existing json files should not be overwritten
+        # unless the overwrite flag is set to True.
+        # Get date and time of existing json files
+        dates = {}
+        for f in fnames_in:
+            dates[f] = getmtime(join(tmpdir, f + ".json"))
+        # Run the function again without overwriting existing json files
+        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
+                                  output_dir=tmpdir)
+        for f in fnames_in:
+            assert getmtime(join(tmpdir, f + ".json")) == dates[f]
+        # Run the function again with overwriting existing json files
+        globalelu.eml_to_wte_json(
+            eml_dir="src/spinneret/data/eml/", output_dir=tmpdir,
+            overwrite=True
+        )
+        for f in fnames_in:
+            assert getmtime(join(tmpdir, f + ".json")) != dates[f]
+        # Furthermore, output files should have the same content as the
+        # fixtures in src/spinneret/data/json/. This content check verifies
+        # both the structural components of the response object and the logic
+        # of eml_to_wte_json() that populates the structure with data.
+        for f in fnames_in:
+            filecmp.cmp(
+                join(tmpdir, f + ".json"),
+                join("src/spinneret/data/json/", f + ".json"),
+                shallow=False,
+            )
