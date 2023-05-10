@@ -606,27 +606,24 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
 
 
             # Query the ECU map server
-            if g.geom_type() == "point" or g.geom_type() == "envelope":
-                location.add_comments("ECU: Was queried.")
-                try:
-                    r = query(
-                        geometry=g.to_esri_geometry(),
-                        geometry_type=g.geom_type(schema="esri"),
-                        map_server="ecu"
-                    )
-                except ConnectionError:
-                    r = None
-                if r is not None:
-                    # Build the ecosystem object and add it to the location.
-                    if r.has_ecosystem(source="ecu"):
-                        ecosystems = r.get_ecosystems(source="ecu")
-                        location.add_ecosystem(ecosystems)
-                    # else:
-                    #     # Add an explanatory comment if not resolved, to
-                    #     # facilitate understanding and analysis.
-                    #     location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
-            else:
-                location.add_comments("ECU: Was not queried because geometry is an unsupported type.")
+            location.add_comments("ECU: Was queried.")
+            try:
+                r = query(
+                    geometry=g.to_esri_geometry(),
+                    geometry_type=g.geom_type(schema="esri"),
+                    map_server="ecu"
+                )
+            except ConnectionError:
+                r = None
+            if r is not None:
+                # Build the ecosystem object and add it to the location.
+                if r.has_ecosystem(source="ecu"):
+                    ecosystems = r.get_ecosystems(source="ecu")
+                    location.add_ecosystem(ecosystems)
+                # else:
+                #     # Add an explanatory comment if not resolved, to
+                #     # facilitate understanding and analysis.
+                #     location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
 
             # TODO Query the MEU map server
             # TODO Query the Freshwater map server
