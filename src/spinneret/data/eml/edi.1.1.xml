@@ -94,17 +94,17 @@
       <geographicCoverage>
         <geographicDescription>Polygon with exlusion ring on land and ocean.</geographicDescription>
         <boundingCoordinates>
-          <westBoundingCoordinate>-125</westBoundingCoordinate>
-          <eastBoundingCoordinate>-119.453</eastBoundingCoordinate>
-          <northBoundingCoordinate>40 </northBoundingCoordinate>
-          <southBoundingCoordinate>35.0</southBoundingCoordinate>
+          <westBoundingCoordinate>-123.8222818</westBoundingCoordinate>
+          <eastBoundingCoordinate>-123.7976226</eastBoundingCoordinate>
+          <northBoundingCoordinate>39.3085666</northBoundingCoordinate>
+          <southBoundingCoordinate>39.2943269</southBoundingCoordinate>
         </boundingCoordinates>
         <datasetGPolygon>
           <datasetGPolygonOuterGRing>
-            <gRing>-119.453,35.0 -125,37.5555 -122,40 -119.453,35.0</gRing>
+            <gRing>-123.7976226,39.3085666 -123.8222818,39.3141049 -123.8166231,39.2943269 -123.7976226,39.3085666</gRing>
           </datasetGPolygonOuterGRing>
           <datasetGPolygonExclusionGRing>
-            <gRing>-120.453,36.0 -124,37.5555 -122,39 -120.453,36.0</gRing>
+            <gRing>-123.8078563,39.3068951 -123.8163387,39.3086898 -123.813222,39.3022756 -123.8078177,39.3068354</gRing>
           </datasetGPolygonExclusionGRing>
         </datasetGPolygon>
       </geographicCoverage>
@@ -112,14 +112,14 @@
       <geographicCoverage>
         <geographicDescription>Polygon on land and ocean.</geographicDescription>
         <boundingCoordinates>
-          <westBoundingCoordinate>-72.22</westBoundingCoordinate>
-          <eastBoundingCoordinate>-72.21</eastBoundingCoordinate>
-          <northBoundingCoordinate>+42.48</northBoundingCoordinate>
-          <southBoundingCoordinate>+42.47</southBoundingCoordinate>
+          <westBoundingCoordinate>-123.8222818</westBoundingCoordinate>
+          <eastBoundingCoordinate>-123.7976226</eastBoundingCoordinate>
+          <northBoundingCoordinate>39.3085666</northBoundingCoordinate>
+          <southBoundingCoordinate>39.2943269</southBoundingCoordinate>
         </boundingCoordinates>
         <datasetGPolygon>
           <datasetGPolygonOuterGRing>
-            <gRing>-119.453,35.0 -125,37.5555 -122,40 -119.453,35.0</gRing>
+            <gRing>-123.7976226,39.3085666 -123.8222818,39.3141049 -123.8166231,39.2943269 -123.7976226,39.3085666</gRing>
           </datasetGPolygonOuterGRing>
         </datasetGPolygon>
       </geographicCoverage>
@@ -155,22 +155,12 @@
       </geographicCoverage>
       <!-- For testing purposes, do not remove. -->
       <geographicCoverage>
-        <geographicDescription>Another point location on land.</geographicDescription>
+        <geographicDescription>Point location on land resolving to WTE and then ECU when expanded into an envelope.</geographicDescription>
         <boundingCoordinates>
           <westBoundingCoordinate>-122.688</westBoundingCoordinate>
           <eastBoundingCoordinate>-122.688</eastBoundingCoordinate>
           <northBoundingCoordinate>37.913</northBoundingCoordinate>
           <southBoundingCoordinate>37.913</southBoundingCoordinate>
-        </boundingCoordinates>
-      </geographicCoverage>
-      <!-- For testing purposes, do not remove. -->
-      <geographicCoverage>
-        <geographicDescription>Point location on land resolving to WTE and then ECU when expanded into an envelope.</geographicDescription>
-        <boundingCoordinates>
-          <westBoundingCoordinate>-124.691</westBoundingCoordinate>
-          <eastBoundingCoordinate>-124.691</eastBoundingCoordinate>
-          <northBoundingCoordinate>48.248</northBoundingCoordinate>
-          <southBoundingCoordinate>48.248</southBoundingCoordinate>
         </boundingCoordinates>
       </geographicCoverage>
       <!-- For testing purposes, do not remove. -->

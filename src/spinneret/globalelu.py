@@ -601,6 +601,8 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                         # Add an explanatory comment if not resolved, to
                         # facilitate understanding and analysis.
                         location.add_comments(r.get_comments("wte"))
+            else:
+                location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
 
 
             # Query the ECU map server
@@ -619,10 +621,12 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                     if r.has_ecosystem(source="ecu"):
                         ecosystems = r.get_ecosystems(source="ecu")
                         location.add_ecosystem(ecosystems)
-                    else:
-                        # Add an explanatory comment if not resolved, to
-                        # facilitate understanding and analysis.
-                        location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
+                    # else:
+                    #     # Add an explanatory comment if not resolved, to
+                    #     # facilitate understanding and analysis.
+                    #     location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
+            else:
+                location.add_comments("ECU: Was not queried because geometry is an unsupported type.")
 
             # TODO Query the MEU map server
             # TODO Query the Freshwater map server
