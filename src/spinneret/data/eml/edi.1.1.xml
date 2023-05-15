@@ -131,6 +131,11 @@
           <eastBoundingCoordinate>-122.760</eastBoundingCoordinate>
           <northBoundingCoordinate>+37.774</northBoundingCoordinate>
           <southBoundingCoordinate>+37.774</southBoundingCoordinate>
+          <boundingAltitudes>
+            <altitudeMinimum>-100</altitudeMinimum>
+            <altitudeMaximum>0</altitudeMaximum>
+            <altitudeUnits>meter</altitudeUnits>
+          </boundingAltitudes>
         </boundingCoordinates>
       </geographicCoverage>
       <!-- For testing purposes, do not remove. -->
@@ -171,6 +176,51 @@
           <eastBoundingCoordinate>-122.266</eastBoundingCoordinate>
           <northBoundingCoordinate>47.866</northBoundingCoordinate>
           <southBoundingCoordinate>47.529</southBoundingCoordinate>
+        </boundingCoordinates>
+      </geographicCoverage>
+      <!-- For testing purposes, do not remove. -->
+      <geographicCoverage>
+        <geographicDescription>Envelope enclosing multiple EMUs.</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-126.125</westBoundingCoordinate>
+          <eastBoundingCoordinate>-125.875</eastBoundingCoordinate>
+          <northBoundingCoordinate>48.625</northBoundingCoordinate>
+          <southBoundingCoordinate>48.375</southBoundingCoordinate>
+          <boundingAltitudes>
+            <altitudeMinimum>-150</altitudeMinimum>
+            <altitudeMaximum>-100</altitudeMaximum>
+            <altitudeUnits>meter</altitudeUnits>
+          </boundingAltitudes>
+        </boundingCoordinates>
+      </geographicCoverage>
+      <!-- For testing purposes, do not remove. -->
+      <geographicCoverage>
+        <geographicDescription>Polygon enclosing multiple EMUs.</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-125.875</westBoundingCoordinate>
+          <eastBoundingCoordinate>-126.125</eastBoundingCoordinate>
+          <northBoundingCoordinate>48.375</northBoundingCoordinate>
+          <southBoundingCoordinate>48.125</southBoundingCoordinate>
+        </boundingCoordinates>
+        <boundingAltitudes>
+            <altitudeMinimum>-25</altitudeMinimum>
+            <altitudeMaximum>-25</altitudeMaximum>
+            <altitudeUnits>meter</altitudeUnits>
+          </boundingAltitudes>
+        <datasetGPolygon>
+          <datasetGPolygonOuterGRing>
+            <gRing>-126.125,48.375 -126.125,48.125 -125.875,48.375 -126.125,48.375</gRing>
+          </datasetGPolygonOuterGRing>
+        </datasetGPolygon>
+      </geographicCoverage>
+      <!-- For testing purposes, do not remove. -->
+      <geographicCoverage>
+        <geographicDescription>Point location on ocean w/o depth specifications.</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-122.760</westBoundingCoordinate>
+          <eastBoundingCoordinate>-122.760</eastBoundingCoordinate>
+          <northBoundingCoordinate>+37.774</northBoundingCoordinate>
+          <southBoundingCoordinate>+37.774</southBoundingCoordinate>
         </boundingCoordinates>
       </geographicCoverage>
       <temporalCoverage>

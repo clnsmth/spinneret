@@ -145,6 +145,24 @@ class GeographicCoverage:
         except TypeError:
             return None
 
+    def altitude_minimum(self, units=None):
+        # TODO implement
+        # Negative values are assumed to be below sea
+        # level but are in fact with respect to a reference that
+        #  is described in free text so it is impossible to parse.
+        return None
+
+    def altitude_maximum(self, units=None):
+        # TODO implement
+        # Negative values are assumed to be below sea
+        # level but are in fact with respect to a reference that
+        #  is described in free text so it is impossible to parse.
+        return None
+
+    def altitude_units(self):
+        # TODO implement
+        return None
+
     def outer_gring(self):
         """Get datasetGPolygonOuterGRing/gRing element from geographicCoverage
 
@@ -246,6 +264,12 @@ class GeographicCoverage:
         >>> res[1].to_esri_geometry()
         >>> res[2].to_esri_geometry()
         """
+        # TODO Add a source parameter to enable custom handling of geometry parsing.
+        #  E.g. In the case of EMU points should be passed as Ezri envelopes, to
+        #  enable query by a range of Z values rather than a set
+        #  of discrete values. Points are represented as envelopes
+        #  by replicating the X&Y values across the min and max
+        #  fields for each of these parameters.
         if self.geom_type() == "polygon":
             return self._to_esri_polygon()
         if self.geom_type() == "point":

@@ -144,6 +144,8 @@ class Attributes:
         elif source == "ecu":
             attributes.set_ecu_attributes(unique_ecosystem_attributes)
             self.data = attributes.data
+        # TODO: implement 'emu'
+        # TODO will need to pass in the OceanName and Name_2018 data frames to map unique_eml_ecosystem codes to labels and annotations
 
     def set_wte_attributes(self, unique_ecosystem_attributes):
         if len(unique_ecosystem_attributes) == 0:
@@ -243,6 +245,17 @@ class Attributes:
         # Append to results
         self.data = self.data
 
+    def set_emu_attributes(self, unique_ecosystem_attributes):
+        # TODO: implement 'emu'
+        # TODO will need to pass in the OceanName and Name_2018 data frames to
+        #  map unique_eml_ecosystem codes to labels and annotations Parse the
+        #  "OceanName" and "Name_2018" values from the EMU, and convert to
+        #  attributes for the ecosystems list object of the data model.
+        #  This requires some string parsing and an assumption of the attribute
+        #  ordering in the comma separated list, much like we did for the
+        #  ecological coastal units algorithm.
+        return None
+
     @staticmethod
     def get_annotation(label, source):
         if source == "wte":
@@ -332,6 +345,7 @@ class Response:
                 return False
             if res > 0:
                 return True
+        # TODO implement for emu.
         return None
 
     def get_unique_ecosystems(self, source):
@@ -379,12 +393,29 @@ class Response:
             descriptors = set(descriptors)
             descriptors = list(descriptors)
             return descriptors
+        # TODO implement for emu.
+        # - Iterate over the features array
+        # Convert feature dictionary to Jason string and add to the list of
+        # results if it is not already included in the set. Otherwise move to
+        # the next.
+        # - Sort the list of EMU's by depth interval, for sake of human reability.
+        #   Note, a data frame may justify the change in data format from json, if json is not conducive to this process.
+        # - If no Z values, then return all EMU's in the sorted list.
+        # - If Z values are present, then to keep the EMU's in JSON format, then iterate through the list
+        # checking if the EML is within the geometry's depth interval
+        # (using >= and <= logic), or if
+        # the single z value is within the EMU's depth interval, and then
+        # appending to a new list of EMLs that will be returned. This json approach
+        # follows the current implementation pattern for WTE and ECU, which
+        # may be worthwhile following for sake of code consistency/readability.
+
 
     def get_ecosystems(self, source):
         if source == "wte":
             res = self.get_wte_ecosystems()
         if source == "ecu":
             res = self.get_ecu_ecosystems()
+        # TODO implement for emu.
         return res
 
     def get_wte_ecosystems(self):
@@ -411,6 +442,28 @@ class Response:
             attributes = Attributes(source="ecu")
             attributes.set_attributes(unique_ecosystem_attributes=unique_ecu_ecosystem,
                                       source="ecu")
+            ecosystem.add_attributes(attributes)
+            ecosystems.append(ecosystem.data)
+        return ecosystems
+
+    def get_emu_ecosystems(self):
+        # TODO implement for emu.
+        # TODO
+        #  - From the fields array get the OceanName object and transform the
+        #  codedValues array into a data frame for mapping feature attributes
+        #  to the name of the ocean in which they reside.
+        #  - From the fields array, get the Name_2018 object and transform the
+        #  codedValues array into a data frame for mapping feature attributes
+        #  to the ecosystem features of the corresponding EMU.
+        ecosystems = []
+        unique_emu_ecosystems = self.get_unique_ecosystems(source="emu")
+        for unique_emu_ecosystem in unique_emu_ecosystems:
+            ecosystem = Ecosystem()
+            ecosystem.set_source("emu")
+            ecosystem.set_version(None)
+            attributes = Attributes(source="emu")
+            attributes.set_attributes(unique_ecosystem_attributes=unique_emu_ecosystem,
+                                      source="emu")  # TODO will need to pass in the OceanName and Name_2018 data frames to map unique_eml_ecosystem codes to labels and annotations
             ecosystem.add_attributes(attributes)
             ecosystems.append(ecosystem.data)
         return ecosystems
@@ -496,29 +549,33 @@ def query(geometry=str, geometry_type=str, map_server=str):
             # accuracy between the point location and nearby ECUs.
             geometry = convert_point_to_envelope(geometry, buffer=0.5)
             geometry_type = "esriGeometryEnvelope"
-    base = (
-        "https://rmgsc.cr.usgs.gov/arcgis/rest/services/" +
-        map_server +
-        "/MapServer/" +
-        layer +
-        "/query"
-    )
-    payload = {
-        "f": "geojson",
-        "geometry": geometry,
-        "geometryType": geometry_type,
-        "where": "1=1",
-        "spatialRel": "esriSpatialRelIntersects",
-        "outFields": "*",
-        "returnGeometry": "false",
-        "returnTrueCurves": "false",
-        "returnIdsOnly": "false",
-        "returnCountOnly": "false",
-        "returnZ": "false",
-        "returnM": "false",
-        "returnDistinctValues": "true",
-        "returnExtentOnly": "false"
-    }
+        payload = {
+            "f": "geojson",
+            "geometry": geometry,
+            "geometryType": geometry_type,
+            "where": "1=1",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "*",
+            "returnGeometry": "false",
+            "returnTrueCurves": "false",
+            "returnIdsOnly": "false",
+            "returnCountOnly": "false",
+            "returnZ": "false",
+            "returnM": "false",
+            "returnDistinctValues": "true",
+            "returnExtentOnly": "false"
+        }
+        base = (
+                "https://rmgsc.cr.usgs.gov/arcgis/rest/services/" +
+                map_server +
+                "/MapServer/" +
+                layer +
+                "/query"
+        )
+    if map_server == 'emu':
+        # TODO implement for emu.
+        pass
+
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
     return Response(r.json())
 
@@ -625,7 +682,30 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 #     # facilitate understanding and analysis.
                 #     location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
 
-            # TODO Query the MEU map server
+            # TODO Query the EMU map server
+            location.add_comments("EMU: Was queried.")
+            try:
+                r = query(
+                    geometry=g.to_esri_geometry(),  # TODO pass a source argument to get the correct geometry (i.e. point as envelope)
+                    geometry_type=g.geom_type(schema="esri"),
+                    map_server="emu"
+                )
+            except ConnectionError:
+                r = None
+            if r is not None:
+                # Build the ecosystem object and add it to the location.
+                if r.has_ecosystem(source="emu"):
+                    # TODO pass the ESRI geometry to get_ecosystems the z
+                    #  value(s) in the correct units, or None, can be used to
+                    #  return the depth specific EMU(s).
+                    ecosystems = r.get_ecosystems(source="emu")
+                    location.add_ecosystem(ecosystems)
+                # else:
+                #     # Add an explanatory comment if not resolved, to
+                #     # facilitate understanding and analysis.
+                #     location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
+
+
             # TODO Query the Freshwater map server
 
             # Add the location, and its ecosystems, to the base object.
