@@ -197,7 +197,8 @@ def test_set_wte_attributes(geocov):
         attributes.set_wte_attributes(raw_ecosystem)
         assert len(attributes.data) == 6
         assert isinstance(attributes.data, dict)
-        assert attributes.data.keys() == globalelu.Attributes('wte').data.keys()
+        assert attributes.data.keys() == globalelu.Attributes(
+            'wte').data.keys()
         for attribute in attributes.data:
             assert isinstance(attributes.data[attribute], dict)
             assert attributes.data[attribute].keys() == \
@@ -347,7 +348,7 @@ def test_query(geocov):
     geocov_success = [
         geocov[3],  # Polygon
         geocov[7],  # Point
-        geocov[8]   # Envelope
+        geocov[8]  # Envelope
     ]
     for g in geocov_success:
         gtype = g.geom_type(schema="esri")
@@ -360,6 +361,7 @@ def test_query(geocov):
         expected_attributes = "CSU_Descriptor"  # ECU has one attribute
         attributes = r.get_attributes([expected_attributes])[
             expected_attributes]
+        assert isinstance(attributes, list)
         assert isinstance(attributes[0], str)
         assert len(attributes[0]) > 0
     # Query the ECU server with a geographic coverage that is known to
@@ -373,6 +375,42 @@ def test_query(geocov):
     )
     assert r is not None
     assert r.has_ecosystem('ecu') is False
+
+    # Query the EMU server with a geographic coverage known to resolve to one
+    # or more EMUs.
+    # TODO This test can be combined with the one above, in a for loop, because
+    #  the test structures are identical.
+    geocov_success = [
+        geocov[4],  # Point
+        geocov[9],  # Envelope
+        geocov[10]  # Polygon
+    ]
+    for g in geocov_success:
+        gtype = g.geom_type(schema="esri")
+        r = globalelu.query(
+            geometry=g.to_esri_geometry(),
+            geometry_type=gtype,
+            map_server="emu"
+        )
+        assert r is not None
+        r.convert_codes_to_values(source="emu")
+        for expected_attribute in ["Name_2018", "OceanName"]:
+            attributes = r.get_attributes([expected_attribute])[
+                expected_attribute]
+            assert isinstance(attributes, list)
+            assert isinstance(attributes[0], str)
+            assert len(attributes[0]) > 0
+    # Query the EMU server with a geographic coverage that is known to
+    # not resolve to one or more ECUs.
+    g = geocov[0]  # Envelope on land
+    gtype = g.geom_type(schema="esri")
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=gtype,
+        map_server="emu"
+    )
+    assert r is not None
+    assert r.has_ecosystem('emu') is False
 
 
 # def test_wte_json_to_df():
@@ -488,11 +526,26 @@ def test_convert_point_to_envelope(geocov):
     """Test the convert_point_to_envelope() function.
 
     The convert_point_to_envelope() function should return an ESRI envelope
-    as a JSON string. The envelope should contain the point and have a spatial
-    reference of 4326.
+    as a JSON string and have a spatial reference of 4326. If a buffer argument
+    is not passed, the resulting envelope bounds should equal the point. If a
+    buffer argument is passed, the resulting envelope should enclose the point
+    within its bounds.
     """
+    # Without a buffer
     point = geocov[7].to_esri_geometry()  # A point location
     res = globalelu.convert_point_to_envelope(point)
+    assert isinstance(res, str)
+    point = json.loads(point)  # Convert to dict for comparison
+    res = json.loads(res)
+    assert point["x"] == res["xmin"]
+    assert point["x"] == res["xmax"]
+    assert point["y"] == res["ymin"]
+    assert point["y"] == res["ymax"]
+    assert res["spatialReference"]["wkid"] == 4326
+
+    # With a buffer
+    point = geocov[7].to_esri_geometry()  # A point location
+    res = globalelu.convert_point_to_envelope(point, buffer=0.5)
     assert isinstance(res, str)
     point = json.loads(point)  # Convert to dict for comparison
     res = json.loads(res)
@@ -510,7 +563,7 @@ def test_has_ecosystem(geocov):
     within the WTE area and False when the geometry is outside the WTE area.
     Similarly, the has_ecosystem method should return True when the geometry
     overlaps with an ECU vector and False when the geometry does not overlap
-    with an ECU vector.
+    with an ECU vector. Similarly for other map servers (e.g. "EMU").
     """
     # Geometries over land areas have a WTE ecosystem
     g = geocov[1]
@@ -546,6 +599,22 @@ def test_has_ecosystem(geocov):
         map_server="ecu"
     )
     assert r.has_ecosystem('ecu') is False
+    # Geometries on the ocean have an EMU ecosystem
+    g = geocov[4]
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=g.geom_type(schema="esri"),
+        map_server="emu"
+    )
+    assert r.has_ecosystem('emu') is True
+    # Geometries on land don't have an EMU ecosystem
+    g = geocov[0]
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=g.geom_type(schema="esri"),
+        map_server="emu"
+    )
+    assert r.has_ecosystem('emu') is False
 
 
 def test_get_wte_ecosystems(geocov):
@@ -574,7 +643,6 @@ def test_get_wte_ecosystems(geocov):
     ecosystems = r.get_wte_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 0
-
 
 
 def test_get_ecu_ecosystems(geocov):
@@ -677,6 +745,7 @@ def test_get_unique_ecosystems(geocov):
     assert len(unique_ecosystems) == 0
     assert unique_ecosystems == list(set(full_list_of_ecosystems))
 
+
 def test_eml_to_wte_json():
     """Test the eml_to_wte_json() function.
 
@@ -725,3 +794,67 @@ def test_eml_to_wte_json():
         )
         for f in fnames_in:
             assert getmtime(join(tmpdir, f + ".json")) != dates[f]
+
+
+def test_convert_codes_to_values(geocov):
+    """Test the convert_codes_to_values method.
+
+    Codes listed in the response object should be converted to their string
+    value equivalents."""
+    # Test a successful response from the EMU server query operation.
+    g = geocov[4]
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=g.geom_type(schema="esri"),
+        map_server="emu"
+    )
+    # Codes are numeric values in the response object initially.
+    for feature in r.json.get("features"):
+        assert isinstance(feature.get("attributes").get("Name_2018"), int)
+        assert isinstance(feature.get("attributes").get("OceanName"), int)
+    # Codes are string values in the response object after conversion.
+    r.convert_codes_to_values(source="emu")
+    for feature in r.json.get("features"):
+        assert isinstance(feature.get("attributes").get("Name_2018"), str)
+        assert isinstance(feature.get("attributes").get("OceanName"), str)
+
+    # Test an unsuccessful response from the EMU server query operation.
+    g = geocov[0]  # Location on land
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=g.geom_type(schema="esri"),
+        map_server="emu"
+    )
+    # The response object's features list is empty and therefore a no-op.
+    assert isinstance(r.json.get("features"), list)
+    assert len(r.json.get("features")) == 0
+
+
+def test_get_ecosystems_for_geometry_z_values(geocov):
+    """Test the get_ecosystems_for_geometry method.
+
+    When a geometry has a single z value (i.e. discrete depth) the
+    get_ecosystems_for_geometry_z_values method should return any EMUs
+    intersecting with the z value, including both bounding EMUs when the z
+    value equals the boundary between the 2 EMUs. When a geometry has 2 z
+    values (i.e. range of depths) the method should return any EMUs
+    intersecting with the range, including both bounding EMUs when the z value
+    equals the boundary between the 2 EMUs. When a geometry has no z values
+    (i.e. no depth) the method should return all EMUs.
+    """
+    # A set of tests on a point location
+    # TODO Single z value within EMU returns one EMU
+    # TODO Single z value on EMU boundary returns two EMUs
+    # TODO Range of z values intersecting with the midpoints of 2 adjacent EMUs
+    #   returns 2 EMUs
+    # TODO Range of z values on boundaries of 2 adjacent EMUs returns 4 EMUs
+    # TODO No z values returns all EMUs.
+
+    # A set of tests on an envelope set of adjacent (proximally close) locations sharing EMU depth boundaries
+    # TODO Single z value within EMUs across locations returns one EMUs at each locaiton
+    # TODO Single z value on EMU boundary returns two EMUs across locations returns one EMUs at each locaiton
+    # TODO Range of z values intersecting with the midpoints of 2 adjacent EMUs
+    #   returns 2 EMUs x number of locations
+    # TODO Range of z values on boundaries of 2 adjacent EMUs returns 4 EMUs x number of locations
+    # TODO No z values returns all EMUs. x number of locations
+    assert False

@@ -339,13 +339,12 @@ class Response:
             if len(res) > 0 and res[0] == "NoData":
                 return False
             return True
-        elif source == "ecu":
+        elif source == "ecu" or source == "emu":
             res = len(self.json["features"])
             if res == 0:
                 return False
             if res > 0:
                 return True
-        # TODO implement for emu.
         return None
 
     def get_unique_ecosystems(self, source):
@@ -362,7 +361,7 @@ class Response:
             A list of unique ecosystems in the response, in the format of the
             response object (i.e. not parsed to data model).
         """
-        #  TODO Note this paralells get_attributes() in some ways. May want to
+        #  TODO Note this parallels get_attributes() in some ways. May want to
         #   rename this function after that one. They serve slightly different
         #   purposes. The current name of this function is a bit misleading.
         #   A better name may be create_ecosystem_attribute_iterable(), or
@@ -385,7 +384,7 @@ class Response:
             descriptors = set(descriptors)
             descriptors = [json.loads(d) for d in descriptors]
             return descriptors
-        if source == 'ecu':
+        elif source == 'ecu':
             if not self.has_ecosystem(source="ecu"):
                 return list()
             attribute = "CSU_Descriptor"
@@ -393,29 +392,23 @@ class Response:
             descriptors = set(descriptors)
             descriptors = list(descriptors)
             return descriptors
-        # TODO implement for emu.
-        # - Iterate over the features array
-        # Convert feature dictionary to Jason string and add to the list of
-        # results if it is not already included in the set. Otherwise move to
-        # the next.
-        # - Sort the list of EMU's by depth interval, for sake of human reability.
-        #   Note, a data frame may justify the change in data format from json, if json is not conducive to this process.
-        # - If no Z values, then return all EMU's in the sorted list.
-        # - If Z values are present, then to keep the EMU's in JSON format, then iterate through the list
-        # checking if the EML is within the geometry's depth interval
-        # (using >= and <= logic), or if
-        # the single z value is within the EMU's depth interval, and then
-        # appending to a new list of EMLs that will be returned. This json approach
-        # follows the current implementation pattern for WTE and ECU, which
-        # may be worthwhile following for sake of code consistency/readability.
-
+        elif source == 'emu':
+            # TODO implement for emu.
+            if not self.has_ecosystem(source="emu"):
+                return list()
+            attribute = "features"
+            descriptors = self.get_attributes([attribute])[attribute]
+            descriptors = set(descriptors)
+            descriptors = list(descriptors)
+            return descriptors
 
     def get_ecosystems(self, source):
         if source == "wte":
             res = self.get_wte_ecosystems()
-        if source == "ecu":
+        elif source == "ecu":
             res = self.get_ecu_ecosystems()
-        # TODO implement for emu.
+        elif source == "emu":
+            res = self.get_emu_ecosystems()
         return res
 
     def get_wte_ecosystems(self):
@@ -447,15 +440,9 @@ class Response:
         return ecosystems
 
     def get_emu_ecosystems(self):
-        # TODO implement for emu.
-        # TODO
-        #  - From the fields array get the OceanName object and transform the
-        #  codedValues array into a data frame for mapping feature attributes
-        #  to the name of the ocean in which they reside.
-        #  - From the fields array, get the Name_2018 object and transform the
-        #  codedValues array into a data frame for mapping feature attributes
-        #  to the ecosystem features of the corresponding EMU.
+        # TODO implement and test for emu.
         ecosystems = []
+        self.get_ecosystems_for_geometry_z_values()
         unique_emu_ecosystems = self.get_unique_ecosystems(source="emu")
         for unique_emu_ecosystem in unique_emu_ecosystems:
             ecosystem = Ecosystem()
@@ -463,12 +450,60 @@ class Response:
             ecosystem.set_version(None)
             attributes = Attributes(source="emu")
             attributes.set_attributes(unique_ecosystem_attributes=unique_emu_ecosystem,
-                                      source="emu")  # TODO will need to pass in the OceanName and Name_2018 data frames to map unique_eml_ecosystem codes to labels and annotations
+                                      source="emu")
             ecosystem.add_attributes(attributes)
             ecosystems.append(ecosystem.data)
         return ecosystems
 
+    def convert_codes_to_values(self, source):
+        if source == "emu":
+            # Create the code-value map for OceanName
+            field_names = [field["name"] for field in self.json["fields"]]
+            i = field_names.index("OceanName")
+            ocean_name_map = pd.DataFrame(
+                self.json.get("fields")[i].get("domain").get("codedValues")
+            )
+            # Create the code-value map for Name_2018
+            i = field_names.index("Name_2018")
+            name_2018_map = pd.DataFrame(
+                self.json.get("fields")[i].get("domain").get("codedValues")
+            )
+            # Iterate over the features array replacing OceanName and
+            # Name_2018 codes with corresponding values in the maps
+            for i in range(len(self.json.get("features"))):
+                # OceeanName
+                code = self.json.get("features")[i]["attributes"]["OceanName"]
+                value = ocean_name_map.loc[
+                    ocean_name_map["code"] == code, "name"
+                ].iloc[0]
+                self.json.get("features")[i]["attributes"]["OceanName"] = value
+                # Name_2018
+                code = self.json.get("features")[i]["attributes"]["Name_2018"]
+                value = name_2018_map.loc[
+                    name_2018_map["code"] == code, "name"
+                ].iloc[0]
+                self.json.get("features")[i]["attributes"]["Name_2018"] = value
 
+    def get_ecosystems_for_geometry_z_values(self, source="emu"):
+        if source == "emu":
+            print(42)
+            # TODO get ecosystems for z values in geometry, then proceed with processing
+            #  as for wte and ecu. Doing this here for EMU enables the use of the
+            #  same subsequent processing routine for all three sources. What this
+            #  entails:
+            # - Iterate over the features array
+            # Convert feature dictionary to Jason string and add to the list of
+            # results if it is not already included in the set. Otherwise move to
+            # the next.
+            # - Sort the list of EMU's by depth interval, for sake of human reability.
+            #   Note, a data frame may justify the change in data format from json, if json is not conducive to this process.
+            # - If no Z values, then return all EMU's in the sorted list.
+            # - If Z values are present, then to keep the EMU's in JSON format, then iterate through the list
+            # checking if the EML is within the geometry's depth interval
+            # (using >= and <= logic), or if
+            # the single z value is within the EMU's depth interval, and then
+            # appending to a new list of EMLs that will be returned.
+            return None
 
 
 def identify(geometry=str, geometry_type=str, map_server=str):
@@ -510,6 +545,7 @@ def identify(geometry=str, geometry_type=str, map_server=str):
         "tolerance": 2,
         "mapExtent": "-2.865, 47.628, 5.321, 50.017",
         "imageDisplay": "600,550,96",
+        "returnGeometry": "true"
     }
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
     return Response(r.json())
@@ -534,6 +570,7 @@ def query(geometry=str, geometry_type=str, map_server=str):
     -------
     Response
     """
+    # TODO convert these if/else clauses to helper functions to improve readability
     # Convert "ecu" to query parameters. The "ecu" abstraction is used to
     # align the UX with usage of "wte".
     if map_server == "ecu":
@@ -541,7 +578,6 @@ def query(geometry=str, geometry_type=str, map_server=str):
         map_server = "gceVector"
         # Convert point geometries to envelopes. This is necessary because
         # the query map service does not support point geometries.
-        # TODO Move this block out a level to operate on all map servers?
         if geometry_type == "esriGeometryPoint" or geometry_type == "point":
             # A buffer radius of 0.5 km should gaurantee overlap of coastal
             # sampling locations, represented by point geometries, and location
@@ -556,7 +592,7 @@ def query(geometry=str, geometry_type=str, map_server=str):
             "where": "1=1",
             "spatialRel": "esriSpatialRelIntersects",
             "outFields": "*",
-            "returnGeometry": "false",
+            "returnGeometry": "true",
             "returnTrueCurves": "false",
             "returnIdsOnly": "false",
             "returnCountOnly": "false",
@@ -572,10 +608,55 @@ def query(geometry=str, geometry_type=str, map_server=str):
                 layer +
                 "/query"
         )
-    if map_server == 'emu':
-        # TODO implement for emu.
-        pass
-
+    elif map_server == 'emu':
+        layer = "0"
+        map_server = "EMU_2018"
+        if geometry_type == "esriGeometryPoint" or geometry_type == "point":
+            # Convert point geometries to envelopes for a more expressive geometry.
+            # Envelopes support areas and point locations, in latitude and
+            # longitude terms, and support intervals and point locations in
+            # elevation terms. Because the capabilities of envelopes fully
+            # encompass points, it makes sense to convert points to envelopes.
+            geometry = convert_point_to_envelope(geometry)
+            geometry_type = "esriGeometryEnvelope"
+        # Note, the map service query form contains these parameters and
+        # values, which are not included in the payload below because they
+        # are not defined in the query-feature-service-layer documentation:
+        #   - Return Geodetic: false
+        #   - Feature Encoding: esriDefault
+        #   - Apply VCS Projection: false
+        #   - Return Unique IDs Only: false
+        #   - Return Count Only: false
+        #   - Return Query Geometry: false
+        #   - Cache Hint: false
+        payload = {
+            "f": "json",  # GEOJSON doesn't return OceanName and Name_2018
+            "geometry": geometry,
+            "geometryType": geometry_type,
+            "where": "1=1",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "UnitTop,UnitBottom,OceanName,Name_2018",
+            "distance": "10",
+            "units": "esriSRUnit_NauticalMile",
+            "returnGeometry": "true",
+            "multipatchOption": "xyFootprint",
+            "outSR": '{"wkid":4326}',
+            "returnIdsOnly": "false",
+            "returnZ": "false",
+            "returnM": "false",
+            "returnExceededLimitFeatures": "true",
+            "sqlFormat": "none",
+            "orderByFields": "UnitTop desc",
+            "returnDistinctValues": "false",
+            "returnExtentOnly": "false"
+        }
+        base = (
+                "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/" +
+                map_server +
+                "/FeatureServer/" +
+                layer +
+                "/query"
+        )
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
     return Response(r.json())
 
@@ -682,22 +763,24 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 #     # facilitate understanding and analysis.
                 #     location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
 
-            # TODO Query the EMU map server
+            # Query the EMU map server
             location.add_comments("EMU: Was queried.")
             try:
                 r = query(
-                    geometry=g.to_esri_geometry(),  # TODO pass a source argument to get the correct geometry (i.e. point as envelope)
+                    geometry=g.to_esri_geometry(),
                     geometry_type=g.geom_type(schema="esri"),
                     map_server="emu"
                 )
             except ConnectionError:
                 r = None
             if r is not None:
+                # Convert the codes listed under the Name_2018 and OceanName
+                # attributes to the descriptive string values so the EMU
+                # response object more closely resembles the ECU and WTE
+                # response objects and can be processed in the same way.
+                r.convert_codes_to_values(source="emu")
                 # Build the ecosystem object and add it to the location.
                 if r.has_ecosystem(source="emu"):
-                    # TODO pass the ESRI geometry to get_ecosystems the z
-                    #  value(s) in the correct units, or None, can be used to
-                    #  return the depth specific EMU(s).
                     ecosystems = r.get_ecosystems(source="emu")
                     location.add_ecosystem(ecosystems)
                 # else:
@@ -896,7 +979,7 @@ def summarize_wte_results(wte_df):
     return res
 
 
-def convert_point_to_envelope(point, buffer=0.5):
+def convert_point_to_envelope(point, buffer=None):
     """Convert an esriGeometryPoint to an esriGeometryEnvelope
 
     Parameters
@@ -926,11 +1009,13 @@ def convert_point_to_envelope(point, buffer=0.5):
         ),
         crs='EPSG:4326'
     )
-    # TODO Verify the consequences of projecting to an arbitrary CRS
-    #  for sake of buffering.
-    gdf = gdf.to_crs("EPSG:32634")  # A CRS in units of meters
-    gdf.geometry = gdf.geometry.buffer(buffer*1000)  # Convert to meters
-    bounds = gdf.to_crs("EPSG:4326").bounds
+    if buffer is not None:  # Add a buffer
+        # TODO Verify the consequences of projecting to an arbitrary CRS
+        #  for sake of buffering.
+        gdf = gdf.to_crs("EPSG:32634")  # A CRS in units of meters
+        gdf.geometry = gdf.geometry.buffer(buffer*1000)  # Convert to meters
+        gdf = gdf.to_crs("EPSG:4326")  # Convert back to EPSG:4326
+    bounds = gdf.bounds
     envelope = {
         "xmin": bounds.minx[0],
         "ymin": bounds.miny[0],
