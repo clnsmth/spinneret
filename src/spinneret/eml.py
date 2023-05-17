@@ -145,23 +145,23 @@ class GeographicCoverage:
         except TypeError:
             return None
 
-    def altitude_minimum(self, units=None):
-        # TODO implement
-        # Negative values are assumed to be below sea
-        # level but are in fact with respect to a reference that
-        #  is described in free text so it is impossible to parse.
-        return None
+    def altitude_minimum(self):
+        try:
+            return float(self.gc.findtext(".//altitudeMinimum"))
+        except TypeError:
+            return None
 
-    def altitude_maximum(self, units=None):
-        # TODO implement
-        # Negative values are assumed to be below sea
-        # level but are in fact with respect to a reference that
-        #  is described in free text so it is impossible to parse.
-        return None
+    def altitude_maximum(self):
+        try:
+            return float(self.gc.findtext(".//altitudeMaximum"))
+        except TypeError:
+            return None
 
     def altitude_units(self):
-        # TODO implement
-        return None
+        try:
+            return self.gc.findtext(".//altitudeUnits")
+        except TypeError:
+            return None
 
     def outer_gring(self):
         """Get datasetGPolygonOuterGRing/gRing element from geographicCoverage

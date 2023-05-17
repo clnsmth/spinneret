@@ -58,8 +58,11 @@ def test_to_esri_geometry(geocov):
     assert geocov[2].to_esri_geometry() == dumps(
         {
             "rings": [
-                [[-123.7976226, 39.3085666], [-123.8222818, 39.3141049], [-123.8166231, 39.2943269], [-123.7976226, 39.3085666]],
-                [[-123.8078563, 39.3068951], [-123.8163387, 39.3086898], [-123.813222, 39.3022756], [-123.8078177, 39.3068354], [-123.8078563, 39.3068951]]
+                [[-123.7976226, 39.3085666], [-123.8222818, 39.3141049],
+                 [-123.8166231, 39.2943269], [-123.7976226, 39.3085666]],
+                [[-123.8078563, 39.3068951], [-123.8163387, 39.3086898],
+                 [-123.813222, 39.3022756], [-123.8078177, 39.3068354],
+                 [-123.8078563, 39.3068951]]
             ], "spatialReference": {"wkid": 4326}}
     )
 
@@ -82,7 +85,8 @@ def test_west(geocov):
     should be updated whenever that files geographicCoverage changes.
     """
     assert isinstance(geocov[0].west(), float)
-    geocov[0].gc.remove(geocov[0].gc.find(".//westBoundingCoordinate").getparent())
+    geocov[0].gc.remove(
+        geocov[0].gc.find(".//westBoundingCoordinate").getparent())
     assert geocov[0].west() is None
 
 
@@ -93,7 +97,8 @@ def test_east(geocov):
     should be updated whenever that files geographicCoverage changes.
     """
     assert isinstance(geocov[0].east(), float)
-    geocov[0].gc.remove(geocov[0].gc.find(".//eastBoundingCoordinate").getparent())
+    geocov[0].gc.remove(
+        geocov[0].gc.find(".//eastBoundingCoordinate").getparent())
     assert geocov[0].east() is None
 
 
@@ -104,7 +109,8 @@ def test_north(geocov):
     should be updated whenever that files geographicCoverage changes.
     """
     assert isinstance(geocov[0].north(), float)
-    geocov[0].gc.remove(geocov[0].gc.find(".//northBoundingCoordinate").getparent())
+    geocov[0].gc.remove(
+        geocov[0].gc.find(".//northBoundingCoordinate").getparent())
     assert geocov[0].north() is None
 
 
@@ -115,7 +121,8 @@ def test_south(geocov):
     should be updated whenever that files geographicCoverage changes.
     """
     assert isinstance(geocov[0].south(), float)
-    geocov[0].gc.remove(geocov[0].gc.find(".//southBoundingCoordinate").getparent())
+    geocov[0].gc.remove(
+        geocov[0].gc.find(".//southBoundingCoordinate").getparent())
     assert geocov[0].south() is None
 
 
@@ -126,7 +133,8 @@ def test_outer_gring(geocov):
     should be updated whenever that files geographicCoverage changes.
     """
     assert isinstance(geocov[2].outer_gring(), str)
-    geocov[2].gc.remove(geocov[2].gc.find(".//datasetGPolygonOuterGRing").getparent())
+    geocov[2].gc.remove(
+        geocov[2].gc.find(".//datasetGPolygonOuterGRing").getparent())
     assert geocov[2].outer_gring() is None
 
 
@@ -141,3 +149,27 @@ def test_exclusion_gring(geocov):
         geocov[2].gc.find(".//datasetGPolygonExclusionGRing").getparent()
     )
     assert geocov[2].exclusion_gring() is None
+
+
+def test_altitude_minimum(geocov):
+    assert isinstance(geocov[4].altitude_minimum(), float)
+    geocov[4].gc.remove(
+        geocov[4].gc.find(".//altitudeMinimum").getparent().getparent()
+    )
+    assert geocov[4].altitude_minimum() is None
+
+
+def test_altitude_maximum(geocov):
+    assert isinstance(geocov[4].altitude_maximum(), float)
+    geocov[4].gc.remove(
+        geocov[4].gc.find(".//altitudeMaximum").getparent().getparent()
+    )
+    assert geocov[4].altitude_maximum() is None
+
+
+def test_altitude_units(geocov):
+    assert isinstance(geocov[4].altitude_units(), str)
+    geocov[4].gc.remove(
+        geocov[4].gc.find(".//altitudeUnits").getparent().getparent()
+    )
+    assert geocov[4].altitude_units() is None

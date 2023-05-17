@@ -1016,6 +1016,7 @@ def convert_point_to_envelope(point, buffer=None):
         gdf.geometry = gdf.geometry.buffer(buffer*1000)  # Convert to meters
         gdf = gdf.to_crs("EPSG:4326")  # Convert back to EPSG:4326
     bounds = gdf.bounds
+    # TODO Transfer Z values from the point to the envelope if present
     envelope = {
         "xmin": bounds.minx[0],
         "ymin": bounds.miny[0],

@@ -843,18 +843,27 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     (i.e. no depth) the method should return all EMUs.
     """
     # A set of tests on a point location
+    g = geocov[11]
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        geometry_type=g.geom_type(schema="esri"),
+        map_server="emu"
+    )
     # TODO Single z value within EMU returns one EMU
-    # TODO Single z value on EMU boundary returns two EMUs
-    # TODO Range of z values intersecting with the midpoints of 2 adjacent EMUs
-    #   returns 2 EMUs
-    # TODO Range of z values on boundaries of 2 adjacent EMUs returns 4 EMUs
-    # TODO No z values returns all EMUs.
+    # Modify z values of response object and call method
+    # z = -15 m
+    r.get_ecosystems_for_geometry_z_values(source="emu")
 
-    # A set of tests on an envelope set of adjacent (proximally close) locations sharing EMU depth boundaries
-    # TODO Single z value within EMUs across locations returns one EMUs at each locaiton
-    # TODO Single z value on EMU boundary returns two EMUs across locations returns one EMUs at each locaiton
-    # TODO Range of z values intersecting with the midpoints of 2 adjacent EMUs
-    #   returns 2 EMUs x number of locations
-    # TODO Range of z values on boundaries of 2 adjacent EMUs returns 4 EMUs x number of locations
-    # TODO No z values returns all EMUs. x number of locations
+    # TODO Single z value on the bounder between two EMUs returns two EMUs
+    # z = -30 m
+
+    # TODO Range of z values each intersecting with the midpoints of two
+    #  adjacent EMUs returns two EMUs
+    # -15 m and -90 m
+
+    # TODO Range of z values on boundaries of two adjacent EMUs returns 4 EMUs
+    # -30 m and -150 m
+
+    # TODO No z values returns all EMUs.
+    # z = None
     assert False

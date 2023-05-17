@@ -206,7 +206,7 @@
             <altitudeMinimum>-25</altitudeMinimum>
             <altitudeMaximum>-25</altitudeMaximum>
             <altitudeUnits>meter</altitudeUnits>
-          </boundingAltitudes>
+        </boundingAltitudes>
         <datasetGPolygon>
           <datasetGPolygonOuterGRing>
             <gRing>-126.125,48.375 -126.125,48.125 -125.875,48.375 -126.125,48.375</gRing>
@@ -217,11 +217,16 @@
       <geographicCoverage>
         <geographicDescription>Point location on ocean w/o depth specifications.</geographicDescription>
         <boundingCoordinates>
-          <westBoundingCoordinate>-122.760</westBoundingCoordinate>
-          <eastBoundingCoordinate>-122.760</eastBoundingCoordinate>
-          <northBoundingCoordinate>+37.774</northBoundingCoordinate>
-          <southBoundingCoordinate>+37.774</southBoundingCoordinate>
+          <westBoundingCoordinate>-157.875</westBoundingCoordinate>
+          <eastBoundingCoordinate>-157.875</eastBoundingCoordinate>
+          <northBoundingCoordinate>21.125</northBoundingCoordinate>
+          <southBoundingCoordinate>21.125</southBoundingCoordinate>
         </boundingCoordinates>
+        <boundingAltitudes>
+            <altitudeMinimum>-15</altitudeMinimum>
+            <altitudeMaximum>0</altitudeMaximum>
+            <altitudeUnits>meter</altitudeUnits>
+        </boundingAltitudes>
       </geographicCoverage>
       <temporalCoverage>
         <rangeOfDates>
