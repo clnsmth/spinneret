@@ -296,8 +296,8 @@ def test_identify(geocov):
     # Run an identify operation on the WTE server with a set of geographic
     # coverages known to resolve to a WTE ecosystem.
     geocov_success = [
-        geocov[0],  # A point on land
-        geocov[1]  # An envelope on land
+        geocov[0],  # An envelope on land
+        geocov[1]  # A point on land
     ]
     for g in geocov_success:
         gtype = g.geom_type(schema="esri")

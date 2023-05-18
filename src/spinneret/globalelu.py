@@ -285,6 +285,8 @@ class Response:
     """
 
     def __init__(self, json):
+        # TODO-Z: Add the query geometry to the response object so it can be
+        #  used to filter the responses ecosystems by z-values in the get_ecosystems_for_geometry_z_values method
         self.json = json
 
     def get_attributes(self, attributes):
@@ -487,10 +489,11 @@ class Response:
     def get_ecosystems_for_geometry_z_values(self, source="emu"):
         if source == "emu":
             print(42)
-            # TODO get ecosystems for z values in geometry, then proceed with processing
-            #  as for wte and ecu. Doing this here for EMU enables the use of the
+            # TODO-Z: get ecosystems for z values in geometry, then proceed with processing in a similar way
+            #  as was done for wte and ecu. Doing this here for EMU enables the use of the
             #  same subsequent processing routine for all three sources. What this
             #  entails:
+            # - Get the z values from the geometry attribute of the response object
             # - Iterate over the features array
             # Convert feature dictionary to Jason string and add to the list of
             # results if it is not already included in the set. Otherwise move to
@@ -525,6 +528,12 @@ def identify(geometry=str, geometry_type=str, map_server=str):
     -------
     Response
 
+    Notes
+    -----
+    Point geometries can be expressed as either `esriGeometryPoint`/`point`
+    or `esriGeometryEnvelope`/`envelope`, where in the case of envelopes
+    xmin=xmax, xmin=xmax, and zmin=zmax.
+
     Examples
     --------
     # >>> identify(
@@ -548,6 +557,8 @@ def identify(geometry=str, geometry_type=str, map_server=str):
         "returnGeometry": "true"
     }
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
+    # TODO-Z: Add the geometry to the response object for subsequent EMU
+    #  operations.
     return Response(r.json())
 
 
@@ -569,6 +580,16 @@ def query(geometry=str, geometry_type=str, map_server=str):
     Returns
     -------
     Response
+
+    Notes
+    -----
+    Point geometries can be expressed as either `esriGeometryPoint`/`point`
+    or `esriGeometryEnvelope`/`envelope`, where in the case of envelopes
+    xmin=xmax, xmin=xmax, and zmin=zmax. The results will be the same. Usage of
+    `esriGeometryEnvelope`/`envelope` is preferred because it allows for the
+    expression of zmin and zmax, which in the case of some map services, such
+    as `emu`, it is necessary to return all ecosystems occurring within an
+    elevation range, rather than only a point location.
     """
     # TODO convert these if/else clauses to helper functions to improve readability
     # Convert "ecu" to query parameters. The "ecu" abstraction is used to
@@ -658,6 +679,8 @@ def query(geometry=str, geometry_type=str, map_server=str):
                 "/query"
         )
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
+    # TODO-Z: Add the geometry to the response object for subsequent EMU
+    #  operations.
     return Response(r.json())
 
 
@@ -999,6 +1022,10 @@ def convert_point_to_envelope(point, buffer=None):
     This function assumes the coordinate reference system of the input
     geometry is EPSG:4326.
     """
+    # TODO-Z:
+    #  1. Use the coordinate reference system of the input geometry to
+    #  guide the conversion. Not doing so runs the risk of producing an
+    #  inaccurate output geometry for use in subsequent operations.
     point = json.loads(point)
     df = pd.DataFrame([{'longitude': point["x"], 'latitude': point["y"]}])
     gdf = gpd.GeoDataFrame(

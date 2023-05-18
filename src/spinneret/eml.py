@@ -221,6 +221,9 @@ class GeographicCoverage:
             `schema="eml"`, or "esriGeometryPolygon", "esriGeometryPoint", or
             "esriGeometryEnvelope" for `schema="esri"`
         """
+        # TODO-Z: Create a function to get the geometry type from the ESRI
+        #  JSON geometry to simplify the user experience (i.e. the type can
+        #  be derived from the object itself so why ask the user to declare it?)
         if self.gc.find(".//datasetGPolygon") is not None:
             if schema == "eml":
                 return "polygon"
@@ -267,6 +270,9 @@ class GeographicCoverage:
         if self.geom_type() == "polygon":
             return self._to_esri_polygon()
         if self.geom_type() == "point":
+            # TODO-Z: Call _to_esri_envelope() and deprecate _to_esri_point()
+            #  because all query() and identify() operations can operate on
+            #  the more expressive envelope geometries.
             return self._to_esri_point()
         if self.geom_type() == "envelope":
             return self._to_esri_envelope()
@@ -288,6 +294,9 @@ class GeographicCoverage:
         represented as a GRingPointType, but is not being implemented here
         until needed.
         """
+        # TODO-Z: Get z values of input geometry and convert to spatial
+        #  reference system of the lat/lon coordinates, which is assumed to be
+        #  4326. Create function to do this (e.g., _convert_z_to_4326).
         res = {
             "x": self.west(),
             "y": self.north(),
@@ -308,6 +317,12 @@ class GeographicCoverage:
         Defaulting to WGS84 because the EML spec does not specify a CRS and
         notes the coordinates are meant to convey general information.
         """
+        # TODO-Z:
+        #  1. Convert points to envelopes.
+        #  2. Convert altitude values of EML-geographicCoverage to the
+        #  4326 spatial reference system to comply with the ESRI geometry
+        #  specification, which delclares all values must be in the same
+        #  spatial reference system, including z values.
         res = {
             "xmin": self.west(),
             "ymin": self.south(),
