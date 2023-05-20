@@ -21,6 +21,59 @@ def geocov():
     res = eml.get_geographic_coverage(eml="src/spinneret/data/eml/edi.1.1.xml")
     return res
 
+@pytest.fixture
+def geometry_shapes():
+    """A dictionary of ESRI geometries."""
+    geometries = {
+        "esriGeometryPoint": {
+            "x": "<x>",
+            "y": "<y>",
+            "z": "<z>",
+            "m": "<m>",
+            "spatialReference": {
+                "<spatialReference>"
+            }
+        },
+        "esriGeometryPolygon": {
+            "hasZ": "<true | false>",
+            "hasM": "<true | false>",
+            "rings": [
+                [
+                    ["<x11>", "<y11>", "<z11>", "<m11>"],
+                    ["<x1N>", "<y1N>", "<z1N>", "<m1N>"]
+                ],
+                [
+                    ["<xk1>", "<yk1>", "<zk1>", "<mk1>"],
+                    ["<xkM>", "<ykM>", "<zkM>", "<mkM>"]
+                ]
+            ],
+            "spatialReference": {"<spatialReference>"}
+        },
+        "esriGeometryEnvelope": {
+            "xmin": "<xmin>",
+            "ymin": "<ymin>",
+            "xmax": "<xmax>",
+            "ymax": "<ymax>",
+            "zmin": "<zmin>",
+            "zmax": "<zmax>",
+            "mmin": "<mmin>",
+            "mmax": "<mmax>",
+            "spatialReference": {
+                "<spatialReference>"
+            }
+        },
+        "unsupported": {
+            "unsupported": "<unsupported>"
+        }
+    }
+    return geometries
+
+
+def test_Response_init():
+    r = globalelu.Response(json="<json>", geometry="<geometry>")
+    assert r.json == "<json>"
+    assert r.geometry == "<geometry>"
+
 
 def test_Location_init():
     # TODO implement test
@@ -867,3 +920,31 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     # TODO No z values returns all EMUs.
     # z = None
     assert False
+
+
+def test_get_geometry_type(geometry_shapes):
+    """Test the get_geometry_type method.
+
+    The get_geometry_type method should return the geometry type if it is
+    supported, otherwise it should return None.
+    """
+    # esriGeometryPoint
+    geometry = geometry_shapes["esriGeometryPoint"]
+    r = globalelu.Response(json="<json>", geometry=geometry)
+    assert r.get_geometry_type() == "esriGeometryPoint"
+
+    # esriGeometryPolygon
+    geometry = geometry_shapes["esriGeometryPolygon"]
+    r = globalelu.Response(json="<json>", geometry=geometry)
+    assert r.get_geometry_type() == "esriGeometryPolygon"
+
+
+    # esriGeometryEnvelope
+    geometry = geometry_shapes["esriGeometryEnvelope"]
+    r = globalelu.Response(json="<json>", geometry=geometry)
+    assert r.get_geometry_type() == "esriGeometryEnvelope"
+
+    # Unsupported geometry type
+    geometry = geometry_shapes["unsupported"]
+    r = globalelu.Response(json="<json>", geometry=geometry)
+    assert r.get_geometry_type() is None

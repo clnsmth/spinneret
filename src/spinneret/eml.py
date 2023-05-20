@@ -1,6 +1,9 @@
 """EML metadata related operations"""
 import json
+from math import isnan
 from lxml import etree
+import pandas as pd
+import geopandas as gpd
 
 
 def get_geographic_coverage(eml):
@@ -145,17 +148,70 @@ class GeographicCoverage:
         except TypeError:
             return None
 
-    def altitude_minimum(self):
-        try:
-            return float(self.gc.findtext(".//altitudeMinimum"))
-        except TypeError:
-            return None
+    def altitude_minimum(self, to_meters=False):
+        """Get altitudeMinimum element from geographicCoverage
 
-    def altitude_maximum(self):
+        Parameters
+        ----------
+        to_meters : bool
+            Convert to meters?
+
+        Returns
+        -------
+        float : altitude_minimum
+            altitudeMinimum element
+
+        Notes
+        -----
+        A conversion to meters is based on the value retrieved from the
+        altitudeUnits element of the geographic coverage, and a conversion
+        table from the EML specification. If the altitudeUnits element is
+        not present, and the to_meters parameter is True, then the altitude
+        value is returned as-is and a warning issued.
+        """
+        try:
+            res = float(self.gc.findtext(".//altitudeMinimum"))
+        except TypeError:
+            res = None
+        if to_meters is True:
+            res = self._convert_to_meters(
+                z=res,
+                from_units=self.altitude_units()
+            )
+        return res
+
+    def altitude_maximum(self, to_meters=False):
+        """Get altitudeMaximum element from geographicCoverage
+
+        Parameters
+        ----------
+        to_meters : bool
+            Convert to meters?
+
+        Returns
+        -------
+        float : altitude_maximum
+            altitudeMaximum element
+
+        Notes
+        -----
+        A conversion to meters is based on the value retrieved from the
+        altitudeUnits element of the geographic coverage, and a conversion
+        table from the EML specification. If the altitudeUnits element is
+        not present, and the to_meters parameter is True, then the altitude
+        value is returned as-is and a warning issued.
+        """
         try:
             return float(self.gc.findtext(".//altitudeMaximum"))
         except TypeError:
-            return None
+            res = None
+        if to_meters is True:
+            res = self._convert_to_meters(
+                z=res,
+                from_units=self.altitude_units()
+            )
+        return res
+
 
     def altitude_units(self):
         try:
@@ -221,9 +277,6 @@ class GeographicCoverage:
             `schema="eml"`, or "esriGeometryPolygon", "esriGeometryPoint", or
             "esriGeometryEnvelope" for `schema="esri"`
         """
-        # TODO-Z: Create a function to get the geometry type from the ESRI
-        #  JSON geometry to simplify the user experience (i.e. the type can
-        #  be derived from the object itself so why ask the user to declare it?)
         if self.gc.find(".//datasetGPolygon") is not None:
             if schema == "eml":
                 return "polygon"
@@ -270,39 +323,10 @@ class GeographicCoverage:
         if self.geom_type() == "polygon":
             return self._to_esri_polygon()
         if self.geom_type() == "point":
-            # TODO-Z: Call _to_esri_envelope() and deprecate _to_esri_point()
-            #  because all query() and identify() operations can operate on
-            #  the more expressive envelope geometries.
-            return self._to_esri_point()
+            return self._to_esri_envelope()
         if self.geom_type() == "envelope":
             return self._to_esri_envelope()
         return None
-
-    def _to_esri_point(self):
-        """Convert boundingCoordinates to ESRI JSON point geometry
-
-        Returns
-        -------
-        str : ESRI JSON point geometry
-            ESRI JSON point geometry
-
-        Notes
-        -----
-        Defaulting coordinate reference system to WGS84 because the EML spec
-        does not specify a CRS and notes the coordinates are meant to convey
-        general information. Additionally, point locations in EML can also be
-        represented as a GRingPointType, but is not being implemented here
-        until needed.
-        """
-        # TODO-Z: Get z values of input geometry and convert to spatial
-        #  reference system of the lat/lon coordinates, which is assumed to be
-        #  4326. Create function to do this (e.g., _convert_z_to_4326).
-        res = {
-            "x": self.west(),
-            "y": self.north(),
-            "spatialReference": {"wkid": 4326},
-        }
-        return json.dumps(res)
 
     def _to_esri_envelope(self):
         """Convert boundingCoordinates to ESRI JSON envelope geometry
@@ -318,17 +342,28 @@ class GeographicCoverage:
         notes the coordinates are meant to convey general information.
         """
         # TODO-Z:
-        #  1. Convert points to envelopes.
         #  2. Convert altitude values of EML-geographicCoverage to the
         #  4326 spatial reference system to comply with the ESRI geometry
         #  specification, which delclares all values must be in the same
         #  spatial reference system, including z values.
+        altitude_minimum = self._convert_altitude_units(
+            altitude=self.altitude_minimum(),
+            units=self.altitude_units(),
+            to="decimal_degrees"
+        )
+        altitude_maximum = self._convert_altitude_units(
+            altitude=self.altitude_maximum(),
+            units=self.altitude_units(),
+            to="decimal_degrees"
+        )
         res = {
             "xmin": self.west(),
             "ymin": self.south(),
             "xmax": self.east(),
             "ymax": self.north(),
-            "spatialReference": {"wkid": 4326},
+            "zmin": altitude_minimum,
+            "zmax": altitude_maximum,
+            "spatialReference": {"wkid": 4326}
         }
         return json.dumps(res)
 
@@ -372,6 +407,63 @@ class GeographicCoverage:
                 res["rings"].append(ring)
             return json.dumps(res)
         return None
+
+    @staticmethod
+    def _convert_to_meters(z, from_units):
+        """Convert an elevation from a given unit of measurement to meters.
+
+        Parameters
+        ----------
+        z : float
+            Value to convert.
+        from_units : str
+            Units to convert from. This must be one of: meter, decimeter,
+            dekameter, hectometer, kilometer, megameter, Foot_US, foot,
+            Foot_Gold_Coast, fathom, nauticalMile, yard, Yard_Indian,
+            Link_Clarke, Yard_Sears, mile.
+
+        Returns
+        -------
+        float : in units of meters
+        """
+        # TODO: altitude_min and altitude_max should return NaN if not present
+        #  so this type check (and others) won't be necessary. Do apply this to
+        #  all other methods that return floats.
+        if z is None:
+            z = float("NaN")
+        conversion_factors = _load_conversion_factors()
+        z_meters = z * conversion_factors.get(from_units, float("NaN"))
+        return z_meters
+
+
+def _load_conversion_factors():
+    """Load conversion factors
+
+    Returns
+    -------
+    dict : conversion factors
+        Dictionary of conversion factors for converting from common units of
+        length to meters.
+    """
+    conversion_factors = {
+        "meter": 1,
+        "decimeter": 1e-1,
+        "dekameter": 1e1,
+        "hectometer": 1e2,
+        "kilometer": 1e3,
+        "megameter": 1e6,
+        "Foot_US": 0.3048006,
+        "foot": 0.3048,
+        "Foot_Gold_Coast": 0.3047997,
+        "fathom": 1.8288,
+        "nauticalMile": 1852,
+        "yard": 0.9144,
+        "Yard_Indian": 0.914398530744440774,
+        "Link_Clarke": 0.2011661949,
+        "Yard_Sears": 0.91439841461602867,
+        "mile": 1609.344
+    }
+    return conversion_factors
 
 
 if __name__ == "__main__":

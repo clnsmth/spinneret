@@ -284,10 +284,9 @@ class Response:
         A dictionary of the JSON response from the identify operation.
     """
 
-    def __init__(self, json):
-        # TODO-Z: Add the query geometry to the response object so it can be
-        #  used to filter the responses ecosystems by z-values in the get_ecosystems_for_geometry_z_values method
+    def __init__(self, json, geometry):
         self.json = json
+        self.geometry = geometry
 
     def get_attributes(self, attributes):
         """Recursively get attributes of a response from an identify or query
@@ -506,6 +505,24 @@ class Response:
             # (using >= and <= logic), or if
             # the single z value is within the EMU's depth interval, and then
             # appending to a new list of EMLs that will be returned.
+            return None
+
+    def get_geometry_type(self):
+        """Get the geometry type from the response object's geometry attribute
+
+        Notes
+        -----
+        This method determines the geometry type by looking for distinguishing
+        properties of the geometry object.
+        """
+        geometry = self.geometry
+        if geometry.get("x") is not None:
+            return "esriGeometryPoint"
+        elif geometry.get("xmin") is not None:
+            return "esriGeometryEnvelope"
+        elif geometry.get("rings") is not None:
+            return "esriGeometryPolygon"
+        else:
             return None
 
 

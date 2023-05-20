@@ -36,26 +36,41 @@ def test_geom_type(geocov):
 def test_to_esri_geometry(geocov):
     """Test geographicCoverage to_esri_geometry method
 
-    This is a fixture based on the contents of edi.1.1.xml. This fixture
-    should be updated whenever that files geographicCoverage changes.
+    Envelopes are converted to esriGeometryEnvelope, points to
+    esriGeometryEnvelope, and polygons to esriGeometryPolygon.
     """
-    assert geocov[0].to_esri_geometry() == dumps(
+    # Envelope to envelope
+    g = geocov[0]
+    assert g.to_esri_geometry() == dumps(
         {
             "xmin": -123.552,
             "ymin": 39.804,
             "xmax": -120.83,
             "ymax": 40.441,
-            "spatialReference": {"wkid": 4326},
+            "zmin": None,
+            "zmax": None,
+            "spatialReference": {"wkid": 4326}
         }
     )
-    assert geocov[1].to_esri_geometry() == dumps(
+
+    # Point to envelope (we do this because envelopes produce same results as
+    # points but are more expressive).
+    g = geocov[1]
+    assert g.to_esri_geometry() == dumps(
         {
-            "x": -72.22,
-            "y": 42.48,
-            "spatialReference": {"wkid": 4326},
+            "xmin": -72.22,
+            "ymin": 42.48,
+            "xmax": -72.22,
+            "ymax": 42.48,
+            "zmin": None,
+            "zmax": None,
+            "spatialReference": {"wkid": 4326}
         }
     )
-    assert geocov[2].to_esri_geometry() == dumps(
+
+    # Polygon to polygon
+    g = geocov[2]
+    assert g.to_esri_geometry() == dumps(
         {
             "rings": [
                 [[-123.7976226, 39.3085666], [-123.8222818, 39.3141049],
@@ -173,3 +188,16 @@ def test_altitude_units(geocov):
         geocov[4].gc.find(".//altitudeUnits").getparent().getparent()
     )
     assert geocov[4].altitude_units() is None
+
+
+def test__convert_to_meters(geocov):
+    # g = geocov[9]  # An envelope with altitude and units
+    # g._convert_altitude()
+
+    g = geocov[0]  # An envelope without altitude and units
+    g._convert_to_meters(
+        altitude=g.altitude_minimum(),
+        from_units=g.altitude_units(),
+        to_units="decimal degrees"
+    )
+    assert False
