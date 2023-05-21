@@ -167,37 +167,54 @@ def test_exclusion_gring(geocov):
 
 
 def test_altitude_minimum(geocov):
-    assert isinstance(geocov[4].altitude_minimum(), float)
-    geocov[4].gc.remove(
-        geocov[4].gc.find(".//altitudeMinimum").getparent().getparent()
+    g = geocov[11]  # A geographic coverage with altitude in units of feet
+    assert isinstance(g.altitude_minimum(), float)
+    assert g.altitude_minimum() == -49.2126
+    assert g.altitude_minimum(to_meters=True) == -15.00000048
+    g.gc.remove(
+        g.gc.find(".//altitudeMinimum").getparent()
     )
-    assert geocov[4].altitude_minimum() is None
+    assert g.altitude_minimum() is None
 
 
 def test_altitude_maximum(geocov):
-    assert isinstance(geocov[4].altitude_maximum(), float)
-    geocov[4].gc.remove(
-        geocov[4].gc.find(".//altitudeMaximum").getparent().getparent()
+    g = geocov[11]  # A geographic coverage with altitude in units of feet
+    assert isinstance(g.altitude_maximum(), float)
+    assert g.altitude_maximum() == 0
+    assert g.altitude_maximum(to_meters=True) == 0
+    g.gc.remove(
+        g.gc.find(".//altitudeMaximum").getparent()
     )
-    assert geocov[4].altitude_maximum() is None
+    assert g.altitude_minimum() is None
 
 
 def test_altitude_units(geocov):
-    assert isinstance(geocov[4].altitude_units(), str)
-    geocov[4].gc.remove(
-        geocov[4].gc.find(".//altitudeUnits").getparent().getparent()
+    g = geocov[11]  # A geographic coverage with altitude in units of feet
+    assert isinstance(g.altitude_units(), str)
+    assert g.altitude_units() == 'foot'
+    g.gc.remove(
+        g.gc.find(".//altitudeUnits").getparent()
     )
-    assert geocov[4].altitude_units() is None
+    assert g.altitude_units() is None
 
 
 def test__convert_to_meters(geocov):
-    # g = geocov[9]  # An envelope with altitude and units
-    # g._convert_altitude()
+    """Test geographicCoverage _convert_to_meters method
 
-    g = geocov[0]  # An envelope without altitude and units
-    g._convert_to_meters(
-        altitude=g.altitude_minimum(),
-        from_units=g.altitude_units(),
-        to_units="decimal degrees"
-    )
-    assert False
+    This method should convert the altitude values to meters if they are not
+    already in meters. If the altitude units are not specified, the method
+    should return None, which is the default value returned by the
+    altitude_minimum and altitude_maximum methods. Because this is a method
+    of the geographicCoverage class, it is not possible to test it directly
+    so we use an instance of geographicCoverage to access the method for
+    testing.
+    """
+    g = geocov[0]
+    # Case when no altitude or units are specified in the geographicCoverage
+    assert g._convert_to_meters(x=None, from_units=None) is None
+    # Case when altitude is specified but no units are specified. Should return value as is.
+    assert g._convert_to_meters(x=10, from_units=None) == 10
+    # Case when altitude is not specified but units are.
+    assert g._convert_to_meters(x=None, from_units="meters") is None
+    # Case when altitude is specified and units are specified. Should convert to meters.
+    assert g._convert_to_meters(x=10, from_units="foot") == 3.048

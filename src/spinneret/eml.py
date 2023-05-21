@@ -175,7 +175,7 @@ class GeographicCoverage:
             res = None
         if to_meters is True:
             res = self._convert_to_meters(
-                z=res,
+                x=res,
                 from_units=self.altitude_units()
             )
         return res
@@ -207,7 +207,7 @@ class GeographicCoverage:
             res = None
         if to_meters is True:
             res = self._convert_to_meters(
-                z=res,
+                x=res,
                 from_units=self.altitude_units()
             )
         return res
@@ -409,12 +409,12 @@ class GeographicCoverage:
         return None
 
     @staticmethod
-    def _convert_to_meters(z, from_units):
+    def _convert_to_meters(x, from_units):
         """Convert an elevation from a given unit of measurement to meters.
 
         Parameters
         ----------
-        z : float
+        x : float
             Value to convert.
         from_units : str
             Units to convert from. This must be one of: meter, decimeter,
@@ -426,14 +426,15 @@ class GeographicCoverage:
         -------
         float : in units of meters
         """
-        # TODO: altitude_min and altitude_max should return NaN if not present
-        #  so this type check (and others) won't be necessary. Do apply this to
-        #  all other methods that return floats.
-        if z is None:
-            z = float("NaN")
+        if x is None:
+            x = float("NaN")
         conversion_factors = _load_conversion_factors()
-        z_meters = z * conversion_factors.get(from_units, float("NaN"))
-        return z_meters
+        conversion_factor = conversion_factors.get(from_units, float("NaN"))
+        if not isnan(conversion_factor):  # Apply the conversion factor if from_units is a valid unit of measurement otherwise return the length value as is
+            x = x * conversion_factors.get(from_units, float("NaN"))
+        if isnan(x):  # Convert back to None, which is the NULL type returned by altitude_minimum and altitude_maximum
+            x = None
+        return x
 
 
 def _load_conversion_factors():

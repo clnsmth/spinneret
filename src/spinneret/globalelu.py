@@ -1040,7 +1040,9 @@ def convert_point_to_envelope(point, buffer=None):
     geometry is EPSG:4326.
     """
     # TODO-Z:
-    #  1. Use the coordinate reference system of the input geometry to
+    #  1. Now all points should be represented as envelopes. This means a
+    #  refactoring of the code here to handle envelopes instead of points.
+    #  2. Use the coordinate reference system of the input geometry to
     #  guide the conversion. Not doing so runs the risk of producing an
     #  inaccurate output geometry for use in subsequent operations.
     point = json.loads(point)
