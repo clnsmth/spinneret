@@ -202,7 +202,7 @@ class GeographicCoverage:
         value is returned as-is and a warning issued.
         """
         try:
-            return float(self.gc.findtext(".//altitudeMaximum"))
+            res = float(self.gc.findtext(".//altitudeMaximum"))
         except TypeError:
             res = None
         if to_meters is True:
@@ -310,6 +310,20 @@ class GeographicCoverage:
         which are required to be listed by the EML spec alongside all polygon
         listings.
 
+        Geographic coverage latitude and longitude are assumed to be in the
+        spatial reference system of WKID 4326 and are inserted into the ESRI
+        geometry as x and y values. Geographic coverages with altitudes and
+        associated units are converted to units of meters and added to the ESRI
+        geometry as z values.
+
+        Geographic coverages that are point locations, as indicated by their
+        bounding box latitude min and max values and longitude min and max
+        values being equivalent, are converted to ESRI envelopes rather than
+        ESRI points, because the envelope geometry type is more expressive and
+        handles more usecases than the point geometry alone. Furthermore, point
+        locations represented as envelope geometries produce the same results
+        as if the point of location was represented as a point geometry.
+
         Examples
         --------
         >>> from spinneret import eml
@@ -323,7 +337,7 @@ class GeographicCoverage:
         if self.geom_type() == "polygon":
             return self._to_esri_polygon()
         if self.geom_type() == "point":
-            return self._to_esri_envelope()
+            return self._to_esri_envelope()  # Envelopes are more expressive and behave the same as point geometries, so us envelopes
         if self.geom_type() == "envelope":
             return self._to_esri_envelope()
         return None
@@ -341,21 +355,8 @@ class GeographicCoverage:
         Defaulting to WGS84 because the EML spec does not specify a CRS and
         notes the coordinates are meant to convey general information.
         """
-        # TODO-Z:
-        #  2. Convert altitude values of EML-geographicCoverage to the
-        #  4326 spatial reference system to comply with the ESRI geometry
-        #  specification, which delclares all values must be in the same
-        #  spatial reference system, including z values.
-        altitude_minimum = self._convert_altitude_units(
-            altitude=self.altitude_minimum(),
-            units=self.altitude_units(),
-            to="decimal_degrees"
-        )
-        altitude_maximum = self._convert_altitude_units(
-            altitude=self.altitude_maximum(),
-            units=self.altitude_units(),
-            to="decimal_degrees"
-        )
+        altitude_minimum = self.altitude_minimum(to_meters=True)
+        altitude_maximum = self.altitude_maximum(to_meters=True)
         res = {
             "xmin": self.west(),
             "ymin": self.south(),
@@ -426,6 +427,9 @@ class GeographicCoverage:
         -------
         float : in units of meters
         """
+        # TODO Warn if x is a non-nan float and the units are empty. This indicates that
+        #  the value has no units and results derived from subsequent use of the value
+        #  may be incorrect.
         if x is None:
             x = float("NaN")
         conversion_factors = _load_conversion_factors()

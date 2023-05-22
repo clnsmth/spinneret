@@ -1,6 +1,7 @@
 """Tests for the eml module."""
 from json import dumps
 import pytest
+from unittest.mock import patch
 from spinneret import eml
 
 
@@ -40,7 +41,7 @@ def test_to_esri_geometry(geocov):
     esriGeometryEnvelope, and polygons to esriGeometryPolygon.
     """
     # Envelope to envelope
-    g = geocov[0]
+    g = geocov[0]  # An envelope without units
     assert g.to_esri_geometry() == dumps(
         {
             "xmin": -123.552,
@@ -53,9 +54,8 @@ def test_to_esri_geometry(geocov):
         }
     )
 
-    # Point to envelope (we do this because envelopes produce same results as
-    # points but are more expressive).
-    g = geocov[1]
+    # Point to envelope
+    g = geocov[1]  # A point without units
     assert g.to_esri_geometry() == dumps(
         {
             "xmin": -72.22,
@@ -64,6 +64,20 @@ def test_to_esri_geometry(geocov):
             "ymax": 42.48,
             "zmin": None,
             "zmax": None,
+            "spatialReference": {"wkid": 4326}
+        }
+    )
+
+    # Point to envelope
+    g = geocov[11]  # A point with units
+    assert g.to_esri_geometry() == dumps(
+        {
+            "xmin": -157.875,
+            "ymin": 21.125,
+            "xmax": -157.875,
+            "ymax": 21.125,
+            "zmin": -15.0,
+            "zmax": 0.0,
             "spatialReference": {"wkid": 4326}
         }
     )
@@ -167,10 +181,21 @@ def test_exclusion_gring(geocov):
 
 
 def test_altitude_minimum(geocov):
-    g = geocov[11]  # A geographic coverage with altitude in units of feet
+    g = geocov[11]  # A geographic coverage with altitudes in meters
     assert isinstance(g.altitude_minimum(), float)
-    assert g.altitude_minimum() == -49.2126
-    assert g.altitude_minimum(to_meters=True) == -15.00000048
+    assert g.altitude_minimum() == -15
+    # The _convert_to_meters method should be called when the to_meters
+    # argument is True.
+    with patch('spinneret.eml.GeographicCoverage._convert_to_meters') as mock__convert_to_meters:
+        g.altitude_minimum(to_meters=True)
+        mock__convert_to_meters.assert_called_once()
+    # The _convert_to_meters method should not be called when the to_meters
+    # argument is False.
+    with patch(
+            'spinneret.eml.GeographicCoverage._convert_to_meters') as mock__convert_to_meters:
+        g.altitude_minimum(to_meters=False)
+        mock__convert_to_meters.assert_not_called()
+    # Returns None when no altitudeMinimum element is present.
     g.gc.remove(
         g.gc.find(".//altitudeMinimum").getparent()
     )
@@ -178,14 +203,26 @@ def test_altitude_minimum(geocov):
 
 
 def test_altitude_maximum(geocov):
-    g = geocov[11]  # A geographic coverage with altitude in units of feet
+    g = geocov[11]  # A geographic coverage with altitudes in meters
     assert isinstance(g.altitude_maximum(), float)
     assert g.altitude_maximum() == 0
-    assert g.altitude_maximum(to_meters=True) == 0
+    # The _convert_to_meters method should be called when the to_meters
+    # argument is True.
+    with patch(
+            'spinneret.eml.GeographicCoverage._convert_to_meters') as mock__convert_to_meters:
+        g.altitude_maximum(to_meters=True)
+        mock__convert_to_meters.assert_called_once()
+    # The _convert_to_meters method should not be called when the to_meters
+    # argument is False.
+    with patch(
+            'spinneret.eml.GeographicCoverage._convert_to_meters') as mock__convert_to_meters:
+        g.altitude_maximum(to_meters=False)
+        mock__convert_to_meters.assert_not_called()
+    # Returns None when no altitudeMinimum element is present.
     g.gc.remove(
         g.gc.find(".//altitudeMaximum").getparent()
     )
-    assert g.altitude_minimum() is None
+    assert g.altitude_maximum() is None
 
 
 def test_altitude_units(geocov):

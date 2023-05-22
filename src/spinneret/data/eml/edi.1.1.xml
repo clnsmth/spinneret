@@ -223,9 +223,9 @@
           <southBoundingCoordinate>21.125</southBoundingCoordinate>
         </boundingCoordinates>
         <boundingAltitudes>
-            <altitudeMinimum>-49.2126</altitudeMinimum>
+            <altitudeMinimum>-15</altitudeMinimum>
             <altitudeMaximum>0</altitudeMaximum>
-            <altitudeUnits>foot</altitudeUnits>
+            <altitudeUnits>meter</altitudeUnits>
         </boundingAltitudes>
       </geographicCoverage>
       <temporalCoverage>

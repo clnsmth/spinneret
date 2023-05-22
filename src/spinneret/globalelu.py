@@ -535,7 +535,9 @@ def identify(geometry=str, geometry_type=str, map_server=str):
     Parameters
     ----------
     geometry : str
-        An ESRI geometry in JSON format.
+        An ESRI geometry in JSON format. If a geometry contains Z values, they
+        must be in units of meters to meet downstream processing assumptions.
+        Not doing so may result in spurious results.
     geometry_type : str
         The `geometryType` parameter corresponding to `geometry`.
     map_server : str
@@ -588,7 +590,9 @@ def query(geometry=str, geometry_type=str, map_server=str):
     Parameters
     ----------
     geometry : str
-        An ESRI geometry in JSON format.
+        An ESRI geometry in JSON format. If a geometry contains Z values, they
+        must be in units of meters to meet downstream processing assumptions.
+        Not doing so may result in spurious results.
     geometry_type : str
         The `geometryType` parameter corresponding to `geometry`.
     map_server : str
