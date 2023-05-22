@@ -62,7 +62,7 @@ class Location:
         self.data = {
             "identifier": None,
             "description": None,
-            "geometry_type": None,
+            "geometry_type": None,  # TODO This is the actual geometry type (e.g. point) rather than the ESRI representation (e.g. envelope with same lat min/max and lon min/max), because this is used for diagnostic purposes and understanding if the underlying sampling space is a point or envelope.
             "comments": [],
             "ecosystem": [],
         }
@@ -441,7 +441,7 @@ class Response:
         return ecosystems
 
     def get_emu_ecosystems(self):
-        # TODO implement and test for emu.
+        # TODO-EMU implement this
         ecosystems = []
         self.get_ecosystems_for_geometry_z_values()
         unique_emu_ecosystems = self.get_unique_ecosystems(source="emu")
@@ -507,26 +507,8 @@ class Response:
             # appending to a new list of EMLs that will be returned.
             return None
 
-    def get_geometry_type(self):
-        """Get the geometry type from the response object's geometry attribute
 
-        Notes
-        -----
-        This method determines the geometry type by looking for distinguishing
-        properties of the geometry object.
-        """
-        geometry = self.geometry
-        if geometry.get("x") is not None:
-            return "esriGeometryPoint"
-        elif geometry.get("xmin") is not None:
-            return "esriGeometryEnvelope"
-        elif geometry.get("rings") is not None:
-            return "esriGeometryPolygon"
-        else:
-            return None
-
-
-def identify(geometry=str, geometry_type=str, map_server=str):
+def identify(geometry=str, map_server=str):
     """Run an identify operation on a USGS map service resource and return the
     requested attributes
 
@@ -537,9 +519,8 @@ def identify(geometry=str, geometry_type=str, map_server=str):
     geometry : str
         An ESRI geometry in JSON format. If a geometry contains Z values, they
         must be in units of meters to meet downstream processing assumptions.
+        The coordinate reference system of the input should be EPSG:4326.
         Not doing so may result in spurious results.
-    geometry_type : str
-        The `geometryType` parameter corresponding to `geometry`.
     map_server : str
         The map server to query. Options are `wte`.
 
@@ -549,17 +530,8 @@ def identify(geometry=str, geometry_type=str, map_server=str):
 
     Notes
     -----
-    Point geometries can be expressed as either `esriGeometryPoint`/`point`
-    or `esriGeometryEnvelope`/`envelope`, where in the case of envelopes
-    xmin=xmax, xmin=xmax, and zmin=zmax.
-
-    Examples
-    --------
-    # >>> identify(
-    # ...     geometry='{"x":-122.5,"y":37.5,"spatialReference":{"wkid":4326}}',
-    # ...     geometry_type='esriGeometryPoint',
-    # ...     map_server='wte'
-    # ... )
+    Point locations should be represented as envelopes, i.e. where xmin=xmax,
+    xmin=xmax, and zmin=zmax. Z can be null.
     """
     base = (
         "https://rmgsc.cr.usgs.gov/arcgis/rest/services/"
@@ -569,19 +541,17 @@ def identify(geometry=str, geometry_type=str, map_server=str):
     payload = {
         "f": "json",
         "geometry": geometry,
-        "geometryType": geometry_type,
+        "geometryType": _get_geometry_type(geometry),
         "tolerance": 2,
         "mapExtent": "-2.865, 47.628, 5.321, 50.017",
         "imageDisplay": "600,550,96",
         "returnGeometry": "true"
     }
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
-    # TODO-Z: Add the geometry to the response object for subsequent EMU
-    #  operations.
-    return Response(r.json())
+    return Response(json=r.json(), geometry=geometry)
 
 
-def query(geometry=str, geometry_type=str, map_server=str):
+def query(geometry=str, map_server=str):
     """Run a query operation on a USGS map service resource and return the
     requested attributes
 
@@ -592,9 +562,8 @@ def query(geometry=str, geometry_type=str, map_server=str):
     geometry : str
         An ESRI geometry in JSON format. If a geometry contains Z values, they
         must be in units of meters to meet downstream processing assumptions.
+        The coordinate reference system of the input should be EPSG:4326.
         Not doing so may result in spurious results.
-    geometry_type : str
-        The `geometryType` parameter corresponding to `geometry`.
     map_server : str
         The map server to query. Options are `ecu`.
 
@@ -604,15 +573,14 @@ def query(geometry=str, geometry_type=str, map_server=str):
 
     Notes
     -----
-    Point geometries can be expressed as either `esriGeometryPoint`/`point`
-    or `esriGeometryEnvelope`/`envelope`, where in the case of envelopes
-    xmin=xmax, xmin=xmax, and zmin=zmax. The results will be the same. Usage of
-    `esriGeometryEnvelope`/`envelope` is preferred because it allows for the
+    Point locations should be represented as envelopes, i.e. where xmin=xmax,
+    xmin=xmax, and zmin=zmax. Z can be null. The results will be the same. Usage of
+    `esriGeometryEnvelope`/`envelope` is used in place of esriGeometryPoint because
+    it behaves the same and it allows for the
     expression of zmin and zmax, which in the case of some map services, such
     as `emu`, it is necessary to return all ecosystems occurring within an
     elevation range, rather than only a point location.
     """
-    # TODO convert these if/else clauses to helper functions to improve readability
     # Convert "ecu" to query parameters. The "ecu" abstraction is used to
     # align the UX with usage of "wte".
     if map_server == "ecu":
@@ -620,17 +588,16 @@ def query(geometry=str, geometry_type=str, map_server=str):
         map_server = "gceVector"
         # Convert point geometries to envelopes. This is necessary because
         # the query map service does not support point geometries.
-        if geometry_type == "esriGeometryPoint" or geometry_type == "point":
+        if _is_point_location(geometry):
             # A buffer radius of 0.5 km should gaurantee overlap of coastal
             # sampling locations, represented by point geometries, and location
             # of ECUs. This is a conservative estimate of the spatial
             # accuracy between the point location and nearby ECUs.
-            geometry = convert_point_to_envelope(geometry, buffer=0.5)
-            geometry_type = "esriGeometryEnvelope"
+            geometry = convert_point_to_envelope(geometry, buffer=0.5)  # TODO Rename to add_buffer? Doing so may keep from confounding the fact that the input geometry may either represent a true point or an envelope
         payload = {
             "f": "geojson",
             "geometry": geometry,
-            "geometryType": geometry_type,
+            "geometryType": _get_geometry_type(geometry),
             "where": "1=1",
             "spatialRel": "esriSpatialRelIntersects",
             "outFields": "*",
@@ -653,14 +620,6 @@ def query(geometry=str, geometry_type=str, map_server=str):
     elif map_server == 'emu':
         layer = "0"
         map_server = "EMU_2018"
-        if geometry_type == "esriGeometryPoint" or geometry_type == "point":
-            # Convert point geometries to envelopes for a more expressive geometry.
-            # Envelopes support areas and point locations, in latitude and
-            # longitude terms, and support intervals and point locations in
-            # elevation terms. Because the capabilities of envelopes fully
-            # encompass points, it makes sense to convert points to envelopes.
-            geometry = convert_point_to_envelope(geometry)
-            geometry_type = "esriGeometryEnvelope"
         # Note, the map service query form contains these parameters and
         # values, which are not included in the payload below because they
         # are not defined in the query-feature-service-layer documentation:
@@ -674,7 +633,7 @@ def query(geometry=str, geometry_type=str, map_server=str):
         payload = {
             "f": "json",  # GEOJSON doesn't return OceanName and Name_2018
             "geometry": geometry,
-            "geometryType": geometry_type,
+            "geometryType": _get_geometry_type(geometry),
             "where": "1=1",
             "spatialRel": "esriSpatialRelIntersects",
             "outFields": "UnitTop,UnitBottom,OceanName,Name_2018",
@@ -700,9 +659,7 @@ def query(geometry=str, geometry_type=str, map_server=str):
                 "/query"
         )
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
-    # TODO-Z: Add the geometry to the response object for subsequent EMU
-    #  operations.
-    return Response(r.json())
+    return Response(json=r.json(), geometry=geometry)
 
 
 def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
@@ -769,8 +726,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 try:
                     r = identify(
                         geometry=g.to_esri_geometry(),
-                        geometry_type=g.geom_type(schema="esri"),
-                        map_server="wte",
+                        map_server="wte"
                     )
                 except ConnectionError:
                     r = None
@@ -792,7 +748,6 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             try:
                 r = query(
                     geometry=g.to_esri_geometry(),
-                    geometry_type=g.geom_type(schema="esri"),
                     map_server="ecu"
                 )
             except ConnectionError:
@@ -812,7 +767,6 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             try:
                 r = query(
                     geometry=g.to_esri_geometry(),
-                    geometry_type=g.geom_type(schema="esri"),
                     map_server="emu"
                 )
             except ConnectionError:
@@ -1023,13 +977,13 @@ def summarize_wte_results(wte_df):
     return res
 
 
-def convert_point_to_envelope(point, buffer=None):
+def convert_point_to_envelope(geometry, buffer=None):
     """Convert an esriGeometryPoint to an esriGeometryEnvelope
 
     Parameters
     ----------
-    point : dict
-        An esriGeometryPoint
+    geometry : dict
+        An esriGeometryEnvelope representing a point
     buffer : float
         The distance in kilometers to buffer the point. The buffer is a radius
         around the point. The default is 0.5.
@@ -1043,14 +997,10 @@ def convert_point_to_envelope(point, buffer=None):
     This function assumes the coordinate reference system of the input
     geometry is EPSG:4326.
     """
-    # TODO-Z:
-    #  1. Now all points should be represented as envelopes. This means a
-    #  refactoring of the code here to handle envelopes instead of points.
-    #  2. Use the coordinate reference system of the input geometry to
-    #  guide the conversion. Not doing so runs the risk of producing an
-    #  inaccurate output geometry for use in subsequent operations.
-    point = json.loads(point)
-    df = pd.DataFrame([{'longitude': point["x"], 'latitude': point["y"]}])
+    if not _is_point_location(geometry) or buffer is None:
+        return geometry
+    geometry = json.loads(geometry)
+    df = pd.DataFrame([{'longitude': geometry["xmin"], 'latitude': geometry["ymin"]}])
     gdf = gpd.GeoDataFrame(
         df,
         geometry=gpd.points_from_xy(
@@ -1059,22 +1009,70 @@ def convert_point_to_envelope(point, buffer=None):
         ),
         crs='EPSG:4326'
     )
-    if buffer is not None:  # Add a buffer
-        # TODO Verify the consequences of projecting to an arbitrary CRS
-        #  for sake of buffering.
-        gdf = gdf.to_crs("EPSG:32634")  # A CRS in units of meters
-        gdf.geometry = gdf.geometry.buffer(buffer*1000)  # Convert to meters
-        gdf = gdf.to_crs("EPSG:4326")  # Convert back to EPSG:4326
+    # TODO Verify the consequences of projecting to an arbitrary CRS
+    #  for sake of buffering.
+    gdf = gdf.to_crs("EPSG:32634")  # A CRS in units of meters
+    gdf.geometry = gdf.geometry.buffer(buffer*1000)  # Convert to meters
+    gdf = gdf.to_crs("EPSG:4326")  # Convert back to EPSG:4326
     bounds = gdf.bounds
-    # TODO Transfer Z values from the point to the envelope if present
-    envelope = {
-        "xmin": bounds.minx[0],
-        "ymin": bounds.miny[0],
-        "xmax": bounds.maxx[0],
-        "ymax": bounds.maxy[0],
-        "spatialReference": point["spatialReference"]
-    }
-    return json.dumps(envelope)
+    # TODO Update values of geometry object
+    geometry["xmin"] = bounds.minx[0]
+    geometry["ymin"] = bounds.miny[0]
+    geometry["xmax"] = bounds.maxx[0]
+    geometry["ymax"] = bounds.maxy[0]
+    return json.dumps(geometry)
+
+
+def _get_geometry_type(geometry):
+    """Get the geometry type from the response object's geometry attribute
+
+    Parameters
+    ----------
+    geometry : str
+        The ESRI geometry object
+
+    Returns
+    -------
+    str : The geometry type
+
+    Notes
+    -----
+    This function determines the geometry type by looking for distinguishing
+    properties of the ESRI geometry object.
+    """
+    geometry = json.loads(geometry)
+    if geometry.get("x") is not None:
+        return "esriGeometryPoint"
+    elif geometry.get("xmin") is not None:
+        return "esriGeometryEnvelope"
+    elif geometry.get("rings") is not None:
+        return "esriGeometryPolygon"
+    else:
+        return None
+
+def _is_point_location(geometry):
+    """Is a geometry a point location? Points are represented as envelopes, but
+    it is useful to know if the geometry is a point location for some internal
+    processes
+
+    Parameters
+    ----------
+    geometry : str
+        The ESRI geometry object
+
+    Returns
+    -------
+    bool : True if the geometry is a point location, False otherwise
+    """
+    if _get_geometry_type(geometry) != "esriGeometryEnvelope":
+        return False
+    geometry = json.loads(geometry)
+    if geometry.get('xmin') == geometry.get('xmax') and \
+            geometry.get('ymin') == geometry.get('ymax'):
+        return True
+    return False
+
+
 
 
 if __name__ == "__main__":

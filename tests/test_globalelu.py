@@ -21,50 +21,59 @@ def geocov():
     res = eml.get_geographic_coverage(eml="src/spinneret/data/eml/edi.1.1.xml")
     return res
 
+
 @pytest.fixture
 def geometry_shapes():
-    """A dictionary of ESRI geometries."""
+    """A list of ESRI geometries."""
     geometries = {
-        "esriGeometryPoint": {
-            "x": "<x>",
-            "y": "<y>",
-            "z": "<z>",
-            "m": "<m>",
-            "spatialReference": {
-                "<spatialReference>"
+        "esriGeometryPoint": json.dumps(
+            {
+                "x": "<x>",
+                "y": "<y>",
+                "z": "<z>",
+                "m": "<m>",
+                "spatialReference": {
+                    "<spatialReference>": "<value>"
+                }
             }
-        },
-        "esriGeometryPolygon": {
-            "hasZ": "<true | false>",
-            "hasM": "<true | false>",
-            "rings": [
-                [
-                    ["<x11>", "<y11>", "<z11>", "<m11>"],
-                    ["<x1N>", "<y1N>", "<z1N>", "<m1N>"]
+        ),
+        "esriGeometryPolygon": json.dumps(
+            {
+                "hasZ": "<true | false>",
+                "hasM": "<true | false>",
+                "rings": [
+                    [
+                        ["<x11>", "<y11>", "<z11>", "<m11>"],
+                        ["<x1N>", "<y1N>", "<z1N>", "<m1N>"]
+                    ],
+                    [
+                        ["<xk1>", "<yk1>", "<zk1>", "<mk1>"],
+                        ["<xkM>", "<ykM>", "<zkM>", "<mkM>"]
+                    ]
                 ],
-                [
-                    ["<xk1>", "<yk1>", "<zk1>", "<mk1>"],
-                    ["<xkM>", "<ykM>", "<zkM>", "<mkM>"]
-                ]
-            ],
-            "spatialReference": {"<spatialReference>"}
-        },
-        "esriGeometryEnvelope": {
-            "xmin": "<xmin>",
-            "ymin": "<ymin>",
-            "xmax": "<xmax>",
-            "ymax": "<ymax>",
-            "zmin": "<zmin>",
-            "zmax": "<zmax>",
-            "mmin": "<mmin>",
-            "mmax": "<mmax>",
-            "spatialReference": {
-                "<spatialReference>"
+                "spatialReference": {"<spatialReference>": "<value>"}
             }
-        },
-        "unsupported": {
-            "unsupported": "<unsupported>"
-        }
+        ),
+        "esriGeometryEnvelope": json.dumps(
+            {
+                "xmin": "<xmin>",
+                "ymin": "<ymin>",
+                "xmax": "<xmax>",
+                "ymax": "<ymax>",
+                "zmin": "<zmin>",
+                "zmax": "<zmax>",
+                "mmin": "<mmin>",
+                "mmax": "<mmax>",
+                "spatialReference": {
+                    "<spatialReference>": "<value>"
+                }
+            }
+        ),
+        "unsupported": json.dumps(
+            {
+                "unsupported": "<unsupported>"
+            }
+        )
     }
     return geometries
 
@@ -241,7 +250,6 @@ def test_set_wte_attributes(geocov):
     gtype = g.geom_type(schema="esri")
     r = globalelu.identify(
         geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
         map_server="wte"
     )
     raw_ecosystems = r.get_unique_ecosystems(source='wte')
@@ -263,7 +271,6 @@ def test_set_wte_attributes(geocov):
     gtype = g.geom_type(schema="esri")
     r = globalelu.identify(
         geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
         map_server="wte"
     )
     raw_ecosystems = r.get_unique_ecosystems(source='wte')
@@ -289,7 +296,6 @@ def test_set_ecu_attributes(geocov):
     gtype = g.geom_type(schema="esri")
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
         map_server="ecu"
     )
     raw_ecosystems = r.get_unique_ecosystems(source='ecu')
@@ -311,7 +317,6 @@ def test_set_ecu_attributes(geocov):
     gtype = g.geom_type(schema="esri")
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
         map_server="ecu"
     )
     raw_ecosystems = r.get_unique_ecosystems(source='ecu')
@@ -356,7 +361,6 @@ def test_identify(geocov):
         gtype = g.geom_type(schema="esri")
         r = globalelu.identify(
             geometry=g.to_esri_geometry(),
-            geometry_type=gtype,
             map_server="wte",
         )
         assert r is not None
@@ -377,8 +381,7 @@ def test_identify(geocov):
         gtype = g.geom_type(schema="esri")
         r = globalelu.identify(
             geometry=g.to_esri_geometry(),
-            geometry_type=gtype,
-            map_server="wte",
+            map_server="wte"
         )
         assert r is not None
         assert isinstance(r, globalelu.Response)
@@ -407,7 +410,6 @@ def test_query(geocov):
         gtype = g.geom_type(schema="esri")
         r = globalelu.query(
             geometry=g.to_esri_geometry(),
-            geometry_type=gtype,
             map_server="ecu"
         )
         assert r is not None
@@ -423,7 +425,6 @@ def test_query(geocov):
     gtype = g.geom_type(schema="esri")
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
         map_server="ecu"
     )
     assert r is not None
@@ -442,7 +443,6 @@ def test_query(geocov):
         gtype = g.geom_type(schema="esri")
         r = globalelu.query(
             geometry=g.to_esri_geometry(),
-            geometry_type=gtype,
             map_server="emu"
         )
         assert r is not None
@@ -459,7 +459,6 @@ def test_query(geocov):
     gtype = g.geom_type(schema="esri")
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
         map_server="emu"
     )
     assert r is not None
@@ -588,25 +587,26 @@ def test_convert_point_to_envelope(geocov):
     point = geocov[7].to_esri_geometry()  # A point location
     res = globalelu.convert_point_to_envelope(point)
     assert isinstance(res, str)
-    point = json.loads(point)  # Convert to dict for comparison
-    res = json.loads(res)
-    assert point["x"] == res["xmin"]
-    assert point["x"] == res["xmax"]
-    assert point["y"] == res["ymin"]
-    assert point["y"] == res["ymax"]
-    assert res["spatialReference"]["wkid"] == 4326
+    assert point == res
 
     # With a buffer
     point = geocov[7].to_esri_geometry()  # A point location
     res = globalelu.convert_point_to_envelope(point, buffer=0.5)
     assert isinstance(res, str)
+    assert point != res
     point = json.loads(point)  # Convert to dict for comparison
     res = json.loads(res)
-    assert point["x"] > res["xmin"]
-    assert point["x"] < res["xmax"]
-    assert point["y"] > res["ymin"]
-    assert point["y"] < res["ymax"]
+    assert point["xmin"] > res["xmin"]
+    assert point["xmax"] < res["xmax"]
+    assert point["ymin"] > res["ymin"]
+    assert point["ymax"] < res["ymax"]
     assert res["spatialReference"]["wkid"] == 4326
+
+    # Other geometries are unchanged
+    polygon = geocov[2].to_esri_geometry()  # Polygon
+    res = globalelu.convert_point_to_envelope(polygon)
+    assert isinstance(res, str)
+    assert polygon == res
 
 
 def test_has_ecosystem(geocov):
@@ -622,7 +622,6 @@ def test_has_ecosystem(geocov):
     g = geocov[1]
     r = globalelu.identify(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="wte"
     )
     assert r.has_ecosystem('wte') is True
@@ -632,7 +631,6 @@ def test_has_ecosystem(geocov):
     for g in geocov_ecu:
         r = globalelu.identify(
             geometry=g.to_esri_geometry(),
-            geometry_type=g.geom_type(schema="esri"),
             map_server="wte"
         )
         assert r.has_ecosystem('wte') is False
@@ -640,7 +638,6 @@ def test_has_ecosystem(geocov):
     g = geocov[7]
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="ecu"
     )
     assert r.has_ecosystem('ecu') is True
@@ -648,7 +645,6 @@ def test_has_ecosystem(geocov):
     g = geocov[0]
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="ecu"
     )
     assert r.has_ecosystem('ecu') is False
@@ -656,7 +652,6 @@ def test_has_ecosystem(geocov):
     g = geocov[4]
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="emu"
     )
     assert r.has_ecosystem('emu') is True
@@ -664,7 +659,6 @@ def test_has_ecosystem(geocov):
     g = geocov[0]
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="emu"
     )
     assert r.has_ecosystem('emu') is False
@@ -680,7 +674,6 @@ def test_get_wte_ecosystems(geocov):
     g = geocov[1]
     r = globalelu.identify(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="wte"
     )
     ecosystems = r.get_wte_ecosystems()
@@ -690,7 +683,6 @@ def test_get_wte_ecosystems(geocov):
     g = geocov[2]
     r = globalelu.identify(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="wte"
     )
     ecosystems = r.get_wte_ecosystems()
@@ -708,7 +700,6 @@ def test_get_ecu_ecosystems(geocov):
     g = geocov[8]
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="ecu"
     )
     ecosystems = r.get_ecu_ecosystems()
@@ -718,10 +709,35 @@ def test_get_ecu_ecosystems(geocov):
     g = geocov[1]
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="ecu"
     )
     ecosystems = r.get_ecu_ecosystems()
+    assert isinstance(ecosystems, list)
+    assert len(ecosystems) == 0
+
+def test_get_emu_ecosystems():
+    # TODO-EMU Run this test
+    """Test the get_emu_ecosystems() method
+
+    A successful query should return a non-empty list of EMU ecosystems. An
+    unsuccessful query should return an empty list.
+    """
+    # Successful query
+    g = geocov[11]
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        map_server="emu"
+    )
+    ecosystems = r.get_emu_ecosystems()
+    assert isinstance(ecosystems, list)
+    assert len(ecosystems) > 0
+    # Unsuccessful query
+    g = geocov[1]
+    r = globalelu.query(
+        geometry=g.to_esri_geometry(),
+        map_server="emu"
+    )
+    ecosystems = r.get_emu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 0
 
@@ -742,10 +758,8 @@ def test_get_unique_ecosystems(geocov):
     # Test a successful response from the WTE server identify operation (i.e.
     # a response an ecosystem).
     g = geocov[1]
-    gtype = g.geom_type(schema="esri")
     r = globalelu.identify(
         geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
         map_server="wte"
     )
     unique_ecosystems = r.get_unique_ecosystems(source='wte')
@@ -755,10 +769,8 @@ def test_get_unique_ecosystems(geocov):
     # Test an unsuccessful response from the wte server identify operation
     # (i.e. a response that contains no ecosystem).
     g = geocov[2]
-    gtype = g.geom_type(schema="esri")
     r = globalelu.identify(
         geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
         map_server="wte"
     )
     unique_ecosystems = r.get_unique_ecosystems(source='wte')
@@ -768,10 +780,8 @@ def test_get_unique_ecosystems(geocov):
     # Test a successful response from the ECU server query (i.e. a response
     # that contains one or more ecosystems).
     g = geocov[8]
-    gtype = g.geom_type(schema="esri")
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
         map_server="ecu"
     )
     full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])[
@@ -784,10 +794,8 @@ def test_get_unique_ecosystems(geocov):
     # Test an unsuccessful response from the ECU server query (i.e. a response
     # that contains no ecosystems).
     g = geocov[1]
-    gtype = g.geom_type(schema="esri")
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=gtype,
         map_server="ecu"
     )
     full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])[
@@ -858,7 +866,6 @@ def test_convert_codes_to_values(geocov):
     g = geocov[4]
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="emu"
     )
     # Codes are numeric values in the response object initially.
@@ -875,7 +882,6 @@ def test_convert_codes_to_values(geocov):
     g = geocov[0]  # Location on land
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="emu"
     )
     # The response object's features list is empty and therefore a no-op.
@@ -895,11 +901,10 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     equals the boundary between the 2 EMUs. When a geometry has no z values
     (i.e. no depth) the method should return all EMUs.
     """
-    # A set of tests on a point location
+    # A set of tests on a point location with z values
     g = geocov[11]
     r = globalelu.query(
         geometry=g.to_esri_geometry(),
-        geometry_type=g.geom_type(schema="esri"),
         map_server="emu"
     )
     # TODO Single z value within EMU returns one EMU
@@ -922,29 +927,77 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     assert False
 
 
-def test_get_geometry_type(geometry_shapes):
-    """Test the get_geometry_type method.
+def test__get_geometry_type(geometry_shapes):
+    """Test the _get_geometry_type method.
 
-    The get_geometry_type method should return the geometry type if it is
+    The _get_geometry_type method should return the ESRI geometry type if it is
     supported, otherwise it should return None.
     """
-    # esriGeometryPoint
-    geometry = geometry_shapes["esriGeometryPoint"]
-    r = globalelu.Response(json="<json>", geometry=geometry)
-    assert r.get_geometry_type() == "esriGeometryPoint"
+    # Point
+    geom = geometry_shapes["esriGeometryPoint"]
+    assert globalelu._get_geometry_type(geom) == "esriGeometryPoint"
+    # Polygon
+    geom = geometry_shapes["esriGeometryPolygon"]
+    assert globalelu._get_geometry_type(geom) == "esriGeometryPolygon"
+    # Envelope
+    geom = geometry_shapes["esriGeometryEnvelope"]
+    assert globalelu._get_geometry_type(geom) == "esriGeometryEnvelope"
+    # Unsupported
+    geom = geometry_shapes["unsupported"]
+    assert globalelu._get_geometry_type(geom) is None
 
-    # esriGeometryPolygon
-    geometry = geometry_shapes["esriGeometryPolygon"]
-    r = globalelu.Response(json="<json>", geometry=geometry)
-    assert r.get_geometry_type() == "esriGeometryPolygon"
 
+def test__is_point_location():
+    """Test the _is_point_location method.
 
-    # esriGeometryEnvelope
-    geometry = geometry_shapes["esriGeometryEnvelope"]
-    r = globalelu.Response(json="<json>", geometry=geometry)
-    assert r.get_geometry_type() == "esriGeometryEnvelope"
+    The _is_point_location method should return True if the geometry is a
+    point, otherwise it should return False.
+    """
+    # Envelope is actually a point
+    point = json.dumps(
+        {
+            "xmin": -72.22,
+            "ymin": 42.48,
+            "xmax": -72.22,
+            "ymax": 42.48,
+            "spatialReference": {
+                "<spatialReference>": "<value>"
+            }
+        }
+    )
+    assert globalelu._is_point_location(point) is True
 
-    # Unsupported geometry type
-    geometry = geometry_shapes["unsupported"]
-    r = globalelu.Response(json="<json>", geometry=geometry)
-    assert r.get_geometry_type() is None
+    # Envelope is an envelope
+    envelope = json.dumps(
+        {
+            "xmin": -123.552,
+            "ymin": 39.804,
+            "xmax": -120.830,
+            "ymax": 40.441,
+            "spatialReference": {
+                "<spatialReference>": "<value>"
+            }
+        }
+    )
+    assert globalelu._is_point_location(envelope) is False
+
+    # Other geometry types are not analyzed and return False
+    polygon = json.dumps(
+        {
+            "hasZ": "<true | false>",
+            "hasM": "<true | false>",
+            "rings": [
+                [
+                    ["<x11>", "<y11>", "<z11>", "<m11>"],
+                    ["<x1N>", "<y1N>", "<z1N>", "<m1N>"]
+                ],
+                [
+                    ["<xk1>", "<yk1>", "<zk1>", "<mk1>"],
+                    ["<xkM>", "<ykM>", "<zkM>", "<mkM>"]
+                ]
+            ],
+            "spatialReference": {"<spatialReference>": "<value>"}
+        }
+    )
+    assert globalelu._is_point_location(polygon) is False
+
