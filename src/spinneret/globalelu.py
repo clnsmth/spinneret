@@ -487,25 +487,46 @@ class Response:
 
     def get_ecosystems_for_geometry_z_values(self, source="emu"):
         if source == "emu":
-            print(42)
-            # TODO-Z: get ecosystems for z values in geometry, then proceed with processing in a similar way
-            #  as was done for wte and ecu. Doing this here for EMU enables the use of the
-            #  same subsequent processing routine for all three sources. What this
-            #  entails:
             # - Get the z values from the geometry attribute of the response object
-            # - Iterate over the features array
-            # Convert feature dictionary to Jason string and add to the list of
-            # results if it is not already included in the set. Otherwise move to
-            # the next.
-            # - Sort the list of EMU's by depth interval, for sake of human reability.
-            #   Note, a data frame may justify the change in data format from json, if json is not conducive to this process.
-            # - If no Z values, then return all EMU's in the sorted list.
-            # - If Z values are present, then to keep the EMU's in JSON format, then iterate through the list
-            # checking if the EML is within the geometry's depth interval
-            # (using >= and <= logic), or if
-            # the single z value is within the EMU's depth interval, and then
-            # appending to a new list of EMLs that will be returned.
-            return None
+            geometry = json.loads(self.geometry)
+            zmin = geometry["zmin"]
+            zmax = geometry["zmax"]
+            res = []
+            if zmin is None or zmax is None:  # Case when no z values are provided
+                for item in self.json["features"]:
+                    parsed = {
+                        "attributes": {
+                            "OceanName": item['attributes']['OceanName'],
+                            "Name_2018": item['attributes']['Name_2018']
+                        }
+                    }
+                    res.append(json.dumps(parsed))
+            else:  # Case when z values are present
+                for item in self.json["features"]:
+                    top = item['attributes']['UnitTop']
+                    bottom = item['attributes']['UnitBottom']
+                    # Case where zmin and zmax are equal
+                    if (zmax <= top and zmax >= bottom) and (zmin <= top and zmin >= bottom):
+                        parsed = {
+                            "attributes": {
+                                "OceanName": item['attributes']['OceanName'],
+                                "Name_2018": item['attributes']['Name_2018']
+                            }
+                        }
+                        res.append(json.dumps(parsed))
+                    # Case where zmin and zmax are not equal (a depth interval)
+                    if (zmax <= top and zmax >= bottom) or (zmin <= top and zmin >= bottom):
+                        parsed = {
+                            "attributes": {
+                                "OceanName": item['attributes']['OceanName'],
+                                "Name_2018": item['attributes']['Name_2018']
+                            }
+                        }
+                        res.append(json.dumps(parsed))
+            # Get the unique set of ecosystems (don't want duplicates) and convert back to a list as preferred by subsequent operations
+            res = set(res)
+            res = list(res)
+            return res
 
 
 def identify(geometry=str, map_server=str):
@@ -544,8 +565,7 @@ def identify(geometry=str, map_server=str):
         "geometryType": _get_geometry_type(geometry),
         "tolerance": 2,
         "mapExtent": "-2.865, 47.628, 5.321, 50.017",
-        "imageDisplay": "600,550,96",
-        "returnGeometry": "true"
+        "imageDisplay": "600,550,96"
     }
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
     return Response(json=r.json(), geometry=geometry)
@@ -601,7 +621,6 @@ def query(geometry=str, map_server=str):
             "where": "1=1",
             "spatialRel": "esriSpatialRelIntersects",
             "outFields": "*",
-            "returnGeometry": "true",
             "returnTrueCurves": "false",
             "returnIdsOnly": "false",
             "returnCountOnly": "false",
@@ -639,7 +658,6 @@ def query(geometry=str, map_server=str):
             "outFields": "UnitTop,UnitBottom,OceanName,Name_2018",
             "distance": "10",
             "units": "esriSRUnit_NauticalMile",
-            "returnGeometry": "true",
             "multipatchOption": "xyFootprint",
             "outSR": '{"wkid":4326}',
             "returnIdsOnly": "false",

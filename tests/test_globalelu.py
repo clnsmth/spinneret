@@ -900,6 +900,15 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     intersecting with the range, including both bounding EMUs when the z value
     equals the boundary between the 2 EMUs. When a geometry has no z values
     (i.e. no depth) the method should return all EMUs.
+
+    Rather than using a set of geographic coverage fixtures, each exemplifying
+    the scenarios, we reduce the number of API calls to the EMU server by
+    modifying the z values of the response objects geometry attribute.
+
+    The results of the assertions were determined by visual inspection of the
+    EMU server map service interface at the geographic coverage represented in
+    the test fixture. Or rather the test fixture was set based on a specific
+    data point in the EMU server map service interface.
     """
     # A set of tests on a point location with z values
     g = geocov[11]
@@ -907,24 +916,77 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
         geometry=g.to_esri_geometry(),
         map_server="emu"
     )
-    # TODO Single z value within EMU returns one EMU
-    # Modify z values of response object and call method
-    # z = -15 m
-    r.get_ecosystems_for_geometry_z_values(source="emu")
 
-    # TODO Single z value on the bounder between two EMUs returns two EMUs
-    # z = -30 m
+    # Single z value within EMU returns one EMU
+    geometry = json.loads(r.geometry)
+    geometry["zmin"] = -15
+    geometry["zmax"] = -15
+    r.geometry = json.dumps(geometry)
+    ecosystems = r.get_ecosystems_for_geometry_z_values(source="emu")
+    expected_ecosystems = {18}
+    assert isinstance(ecosystems, list)
+    for ecosystem in ecosystems:
+        assert isinstance(ecosystem, str)
+        assert json.loads(ecosystem)['attributes'][
+                   'Name_2018'] in expected_ecosystems
+    assert len(ecosystems) == 1
 
-    # TODO Range of z values each intersecting with the midpoints of two
+    # Single z value on the bounder between two EMUs returns two EMUs
+    geometry = json.loads(r.geometry)
+    geometry["zmin"] = -30
+    geometry["zmax"] = -30
+    r.geometry = json.dumps(geometry)
+    ecosystems = r.get_ecosystems_for_geometry_z_values(source="emu")
+    expected_ecosystems = {18, 24}
+    assert isinstance(ecosystems, list)
+    for ecosystem in ecosystems:
+        assert isinstance(ecosystem, str)
+        assert json.loads(ecosystem)['attributes'][
+                   'Name_2018'] in expected_ecosystems
+    assert len(ecosystems) == 2
+
+    # Range of z values each intersecting with the midpoints of two
     #  adjacent EMUs returns two EMUs
-    # -15 m and -90 m
+    geometry = json.loads(r.geometry)
+    geometry["zmin"] = -90
+    geometry["zmax"] = -15
+    r.geometry = json.dumps(geometry)
+    ecosystems = r.get_ecosystems_for_geometry_z_values(source="emu")
+    expected_ecosystems = {18, 24}
+    assert isinstance(ecosystems, list)
+    for ecosystem in ecosystems:
+        assert isinstance(ecosystem, str)
+        assert json.loads(ecosystem)['attributes'][
+                   'Name_2018'] in expected_ecosystems
+    assert len(ecosystems) == 2
 
-    # TODO Range of z values on boundaries of two adjacent EMUs returns 4 EMUs
-    # -30 m and -150 m
+    # Range of z values on boundaries of two adjacent EMUs returns 3 EMUs
+    geometry = json.loads(r.geometry)
+    geometry["zmin"] = -150
+    geometry["zmax"] = -30
+    r.geometry = json.dumps(geometry)
+    ecosystems = r.get_ecosystems_for_geometry_z_values(source="emu")
+    expected_ecosystems = {18, 24, 11}
+    assert isinstance(ecosystems, list)
+    for ecosystem in ecosystems:
+        assert isinstance(ecosystem, str)
+        assert json.loads(ecosystem)['attributes'][
+                   'Name_2018'] in expected_ecosystems
+    assert len(ecosystems) == 3
 
-    # TODO No z values returns all EMUs.
+    # No z values returns all EMUs.
     # z = None
-    assert False
+    geometry = json.loads(r.geometry)
+    geometry["zmin"] = None
+    geometry["zmax"] = None
+    r.geometry = json.dumps(geometry)
+    ecosystems = r.get_ecosystems_for_geometry_z_values(source="emu")
+    expected_ecosystems = {18, 24, 11, 26, 8, 19}
+    assert isinstance(ecosystems, list)
+    for ecosystem in ecosystems:
+        assert isinstance(ecosystem, str)
+        assert json.loads(ecosystem)['attributes']['Name_2018'] in expected_ecosystems
+    assert len(ecosystems) == 6
 
 
 def test__get_geometry_type(geometry_shapes):
