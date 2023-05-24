@@ -135,6 +135,18 @@ class Attributes:
                 "Chlorophyll": {"label": None, "annotation": None},
                 "CSU_Descriptor": {"label": None, "annotation": None}
             }
+        elif source == "emu":
+            self.data = {
+                "OceanName": {"label": None, "annotation": None},
+                "Depth": {"label": None, "annotation": None},
+                "Temperature": {"label": None, "annotation": None},
+                "Salinity": {"label": None, "annotation": None},
+                "Dissolved Oxygen": {"label": None, "annotation": None},
+                "Nitrate": {"label": None, "annotation": None},
+                "Phosphate": {"label": None, "annotation": None},
+                "Silicate": {"label": None, "annotation": None},
+                "EMU_Descriptor": {"label": None, "annotation": None}
+            }
 
     def set_attributes(self, unique_ecosystem_attributes, source):
         attributes = Attributes(source=source)
@@ -144,8 +156,9 @@ class Attributes:
         elif source == "ecu":
             attributes.set_ecu_attributes(unique_ecosystem_attributes)
             self.data = attributes.data
-        # TODO: implement 'emu'
-        # TODO will need to pass in the OceanName and Name_2018 data frames to map unique_eml_ecosystem codes to labels and annotations
+        elif source == "emu":
+            attributes.set_emu_attributes(unique_ecosystem_attributes)
+            self.data = attributes.data
 
     def set_wte_attributes(self, unique_ecosystem_attributes):
         if len(unique_ecosystem_attributes) == 0:
@@ -246,15 +259,52 @@ class Attributes:
         self.data = self.data
 
     def set_emu_attributes(self, unique_ecosystem_attributes):
-        # TODO: implement 'emu'
-        # TODO will need to pass in the OceanName and Name_2018 data frames to
-        #  map unique_eml_ecosystem codes to labels and annotations Parse the
-        #  "OceanName" and "Name_2018" values from the EMU, and convert to
-        #  attributes for the ecosystems list object of the data model.
-        #  This requires some string parsing and an assumption of the attribute
-        #  ordering in the comma separated list, much like we did for the
-        #  ecological coastal units algorithm.
-        return None
+        if len(unique_ecosystem_attributes) == 0:
+            return None
+        # There are two attributes for EMU, OceanName and Name_2018, the latter
+        # of which is composed of 7 atomic attributes.
+        attributes = json.loads(unique_ecosystem_attributes)["attributes"]
+        # Get OceanName
+        ocean_name = attributes.get("OceanName")
+        # Atomize Name_2018: Split on commas and remove whitespace
+        descriptors = attributes.get("Name_2018")
+        descriptors = descriptors.split(",")
+        descriptors = [g.strip() for g in descriptors]
+        # Add ocean name to front of descriptors list in preparation for the zipping operation below
+        descriptors = [ocean_name] + descriptors
+        atomic_attribute_labels = self.data.keys()
+        # Zip descriptors and atomic attribute labels
+        ecosystems = [dict(zip(atomic_attribute_labels, descriptors))]
+        # Iterate over atomic attributes and set labels and annotations
+        ecosystem = ecosystems[0]
+        # attributes = {}
+        # self.data
+        for attribute in ecosystem.keys():
+            label = ecosystem.get(attribute)
+            self.data[attribute] = {
+                "label": label,
+                "annotation": self.get_annotation(label, source="emu")
+            }
+        # Add composite EMU_Description class and annotation.
+        # Get ecosystems values and join with commas
+        # TODO Fix issue where an attribute from the initialized list returned by
+        #  Attributes() was missing for some reason and thus an annotation couldn't
+        #  be found for it. If arbitrary joining of empties to the annotation string
+        #  is done, then the annotation may be wrong. Best to just leave it out.
+        EMU_Descriptor = [f.get("label") for f in self.data.values()]
+        # Knock of the last one, which is EMU_Descriptor
+        EMU_Descriptor = EMU_Descriptor[:-1]
+        EMU_Descriptor = ", ".join(EMU_Descriptor)
+        EMU_Descriptor_annotation = [f.get("annotation") for f in self.data.values()]
+        # Knock of the last one, which is EMU_Descriptor
+        EMU_Descriptor_annotation = EMU_Descriptor_annotation[:-1]
+        EMU_Descriptor_annotation = "|".join(EMU_Descriptor_annotation)
+        self.data["EMU_Descriptor"] = {
+            "label": EMU_Descriptor,
+            "annotation": EMU_Descriptor_annotation
+        }
+        # Append to results
+        self.data = self.data
 
     @staticmethod
     def get_annotation(label, source):
@@ -268,6 +318,8 @@ class Attributes:
             sssom["subject_label"] = sssom["subject_label"].str.lower()
         elif source == "ecu":
             return "Placeholder"  # TODO - add ECU sssom and parse
+        elif source == "emu":
+            return "Placeholder"  # TODO - add EMU sssom and parse
         res = sssom.loc[
             sssom["subject_label"] == label.lower(),
             "object_id"
@@ -394,13 +446,19 @@ class Response:
             descriptors = list(descriptors)
             return descriptors
         elif source == 'emu':
-            # TODO implement for emu.
             if not self.has_ecosystem(source="emu"):
                 return list()
-            attribute = "features"
-            descriptors = self.get_attributes([attribute])[attribute]
-            descriptors = set(descriptors)
-            descriptors = list(descriptors)
+            # FIXME? - get_ecosystems_for_geometry_z_values does two things:
+            #  1. gets ecosystems for z values
+            #  2. gets unique ecosystems
+            #  This doesn't follow the pattern for WTE and ECU, where all
+            #  ecosystems are first retrieved, then unique ecosystems are
+            #  derived. Either this function should be split into two, or the
+            #  WTE and ECU function's get and unique operations should be
+            #  combined into one.
+            self.convert_codes_to_values(
+                source="emu")  # TODO-EMU this could occur after getting unique values instersecting with z, but would create a different pattern than implemented for ECU and WTE.
+            descriptors = self.get_ecosystems_for_geometry_z_values(source="emu")  # FIXME? This pattern differs from WTE and ECU implementations. Change? See implementation notes.
             return descriptors
 
     def get_ecosystems(self, source):
@@ -443,7 +501,6 @@ class Response:
     def get_emu_ecosystems(self):
         # TODO-EMU implement this
         ecosystems = []
-        self.get_ecosystems_for_geometry_z_values()
         unique_emu_ecosystems = self.get_unique_ecosystems(source="emu")
         for unique_emu_ecosystem in unique_emu_ecosystems:
             ecosystem = Ecosystem()
@@ -457,6 +514,14 @@ class Response:
         return ecosystems
 
     def convert_codes_to_values(self, source):
+        # Convert the codes listed under the Name_2018 and OceanName
+        # attributes to the descriptive string values so the EMU
+        # response object more closely resembles the ECU and WTE
+        # response objects and can be processed in the same way. This is a
+        # tradeoff between processing the response object in a way that is
+        # consistent with the other response objects (supporting readability)
+        # and processing the response object in a way that may be more
+        # efficient. Profiling has not yet been conducted on this.
         if source == "emu":
             # Create the code-value map for OceanName
             field_names = [field["name"] for field in self.json["fields"]]
@@ -626,7 +691,7 @@ def query(geometry=str, map_server=str):
             "returnCountOnly": "false",
             "returnZ": "false",
             "returnM": "false",
-            "returnDistinctValues": "true",
+            # "returnDistinctValues": "true",
             "returnExtentOnly": "false"
         }
         base = (
@@ -790,11 +855,6 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             except ConnectionError:
                 r = None
             if r is not None:
-                # Convert the codes listed under the Name_2018 and OceanName
-                # attributes to the descriptive string values so the EMU
-                # response object more closely resembles the ECU and WTE
-                # response objects and can be processed in the same way.
-                r.convert_codes_to_values(source="emu")
                 # Build the ecosystem object and add it to the location.
                 if r.has_ecosystem(source="emu"):
                     ecosystems = r.get_ecosystems(source="emu")
