@@ -1272,12 +1272,12 @@ if __name__ == "__main__":
     #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
     #     overwrite=True
     # )
-    # For local testing
-    eml_to_wte_json(
-        eml_dir="/Users/csmith/Data/edi/eml/",
-        output_dir="/Users/csmith/Data/edi/json/",
-        overwrite=True
-    )
+    # # For local testing
+    # eml_to_wte_json(
+    #     eml_dir="/Users/csmith/Data/edi/eml/",
+    #     output_dir="/Users/csmith/Data/edi/json/",
+    #     overwrite=True
+    # )
 
     # # Combine json files into a single dataframe
     # df = wte_json_to_df(json_dir="/Users/csmith/Data/edi/json/")

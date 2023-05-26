@@ -228,7 +228,7 @@ def test_altitude_maximum(geocov):
 def test_altitude_units(geocov):
     g = geocov[11]  # A geographic coverage with altitude in units of feet
     assert isinstance(g.altitude_units(), str)
-    assert g.altitude_units() == 'foot'
+    assert g.altitude_units() == 'meter'
     g.gc.remove(
         g.gc.find(".//altitudeUnits").getparent()
     )

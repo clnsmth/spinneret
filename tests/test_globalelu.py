@@ -1,7 +1,4 @@
 """Test the globalelu module."""
-import difflib
-from difflib import ndiff
-import filecmp
 import tempfile
 import os
 import json
@@ -232,7 +229,7 @@ def test_Attributes_init():
                 "Nitrate",
                 "Phosphate",
                 "Silicate",
-                "CSU_Descriptor"
+                "EMU_Descriptor"
             ]
         assert isinstance(attributes.data, dict)
         for attribute in expected_attributes:
@@ -561,7 +558,6 @@ def test_get_attributes(geocov):
     """
     r = globalelu.identify(
         geometry=geocov[0].to_esri_geometry(),
-        geometry_type=geocov[0].geom_type(schema="esri"),
         map_server="wte",
     )
     attributes = ["Landforms", "Landcover", "Climate_Re"]
