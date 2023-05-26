@@ -215,7 +215,7 @@
       </geographicCoverage>
       <!-- For testing purposes, do not remove. -->
       <geographicCoverage>
-        <geographicDescription>Point location on ocean w/o depth specifications.</geographicDescription>
+        <geographicDescription>Point location on ocean depth specifications.</geographicDescription>
         <boundingCoordinates>
           <westBoundingCoordinate>-157.875</westBoundingCoordinate>
           <eastBoundingCoordinate>-157.875</eastBoundingCoordinate>

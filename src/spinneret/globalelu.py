@@ -5,6 +5,7 @@ import json
 import requests
 import pandas as pd
 import geopandas as gpd
+from shapely.geometry import Polygon
 from spinneret.utilities import user_agent
 from spinneret.eml import get_geographic_coverage
 
@@ -457,7 +458,7 @@ class Response:
             #  WTE and ECU function's get and unique operations should be
             #  combined into one.
             self.convert_codes_to_values(
-                source="emu")  # TODO-EMU this could occur after getting unique values instersecting with z, but would create a different pattern than implemented for ECU and WTE.
+                source="emu")  # FIXME? This pattern differs from WTE and ECU implementations. Change? See implementation notes.
             descriptors = self.get_ecosystems_for_geometry_z_values(source="emu")  # FIXME? This pattern differs from WTE and ECU implementations. Change? See implementation notes.
             return descriptors
 
@@ -499,7 +500,6 @@ class Response:
         return ecosystems
 
     def get_emu_ecosystems(self):
-        # TODO-EMU implement this
         ecosystems = []
         unique_emu_ecosystems = self.get_unique_ecosystems(source="emu")
         for unique_emu_ecosystem in unique_emu_ecosystems:
@@ -554,8 +554,8 @@ class Response:
         if source == "emu":
             # - Get the z values from the geometry attribute of the response object
             geometry = json.loads(self.geometry)
-            zmin = geometry["zmin"]
-            zmax = geometry["zmax"]
+            zmin = geometry.get("zmin")
+            zmax = geometry.get("zmax")
             res = []
             if zmin is None or zmax is None:  # Case when no z values are provided
                 for item in self.json["features"]:
@@ -822,9 +822,52 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                         # Add an explanatory comment if not resolved, to
                         # facilitate understanding and analysis.
                         location.add_comments(r.get_comments("wte"))
-            else:
-                location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
+            # TODO-WTE this line is run after querying WTE for envelope types,
+            #  otherwise it would be added for anything other than a point
+            # else:
+            #     location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
 
+            # TODO-WTE-envelope: Below is a preliminary implementation of
+            #  querying the WTE map server for envelope types. It is not
+            #  complete, but provides some preliminary ideas for how to
+            #  implement this functionality. Testing occurs in:
+            #  - test/test_globalelu.py::test_envelope_to_points
+            #  - test/test_globalelu.py::test_eml_to_wte_json_wte_envelope
+            if g.geom_type() == "envelope":
+                location.add_comments("WTE: Was queried.")
+                points = _envelope_to_points(g.to_esri_geometry())
+                ecosystems_in_envelope = []
+                ecosystems_in_envelope_comments = []
+                for point in points:
+                    try:
+                        r = identify(
+                            geometry=point,
+                            map_server="wte"
+                        )
+                    except ConnectionError:
+                        r = None
+                    if r is not None:
+                        # Build the ecosystem object and add it to the location.
+                        if r.has_ecosystem(source="wte"):
+                            ecosystems = r.get_ecosystems(source="wte")
+                            # TODO Implement a uniquing function to handle this edge case
+                            #  after geometry type passing is finalized, which may negate
+                            #  the need for this edge case handling.
+                            ecosystems_in_envelope.append(
+                                json.dumps(ecosystems[0]))
+                        else:
+                            # Add an explanatory comment if not resolved, to
+                            # facilitate understanding and analysis.
+                            ecosystems_in_envelope_comments.append(r.get_comments("wte"))
+                ecosystems_in_envelope = list(set(ecosystems_in_envelope))
+                ecosystems_in_envelope = [json.loads(e) for e in ecosystems_in_envelope]
+                ecosystems_in_envelope_comments = list(set(ecosystems_in_envelope_comments))  # TODO Investigate this code. Not sure if it's doing what it is supposed to.
+                # TODO end of the two TODO's above ----------------------------
+                location.add_ecosystem(ecosystems_in_envelope)
+                location.add_comments(ecosystems_in_envelope_comments)
+            # TODO Post the comment below for polygons only.
+            # else:
+            #     location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
 
             # Query the ECU map server
             location.add_comments("ECU: Was queried.")
@@ -1149,6 +1192,71 @@ def _is_point_location(geometry):
             geometry.get('ymin') == geometry.get('ymax'):
         return True
     return False
+
+def _envelope_to_points(geometry):
+    """Convert an envelope to a list of points
+
+    Parameters
+    ----------
+    geometry : str
+        The ESRI geometry object
+
+    Returns
+    -------
+    list : A list of ESRI envelope geometries (as str) representing point locations
+    (i.e. xmin == xmax and ymin == ymax). Note, this is a design decision.
+
+    Notes
+    -----
+    For improving the results from the WTE identify responses. Currently, the
+    identify operation returns the midpoint of the envelope. This function
+    returns the four corners of the envelope in addition to the midpoint. This
+    function could likely be improved.
+    """
+    geometry = json.loads(geometry)
+    # Create a GeoSeries with the four corners of the envelope
+    bounds = [
+        (geometry.get("xmin"), geometry.get("ymin")),
+        (geometry.get("xmax"), geometry.get("ymin")),
+        (geometry.get("xmax"), geometry.get("ymax")),
+        (geometry.get("xmin"), geometry.get("ymax"))
+    ]
+    # Construct point geometries from the envelope corners
+    res = []
+    for corner in bounds:
+        res.append(
+            json.dumps(
+                {
+                    "xmin": corner[0],
+                    "ymin": corner[1],
+                    "xmax": corner[0],
+                    "ymax": corner[1],
+                    "zmin": geometry.get("zmin"),
+                    "zmax": geometry.get("zmax"),
+                    "spatialReference": geometry.get("spatialReference")
+                }
+            )
+        )
+    # Get the centroid of the rectangle
+    rectangle = gpd.GeoSeries(Polygon(bounds))
+    centroid = rectangle.centroid
+    # TODO Use one single consistent approach to transferring values to the
+    #  result for simplicity.
+    res.append(
+        json.dumps(
+            {
+                "xmin": centroid.x[0],
+                "ymin": centroid.y[0],
+                "xmax": centroid.x[0],
+                "ymax": centroid.y[0],
+                "zmin": geometry.get("zmin"),
+                "zmax": geometry.get("zmax"),
+                "spatialReference": geometry.get("spatialReference")
+            }
+        )
+    )
+    return res
+
 
 
 
