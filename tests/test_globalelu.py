@@ -767,8 +767,6 @@ def test_get_emu_ecosystems(geocov):
     A successful query should return a non-empty list of EMU ecosystems. An
     unsuccessful query should return an empty list.
     """
-    # TODO-EMU May also want to test polygon and envelope geometries in greater
-    #  detail (i.e. specific ecosystems returned) at test_get_unique_ecosystems_for_z().
     # A series of successful queries
     g = geocov[11]  # Point
     r = globalelu.query(

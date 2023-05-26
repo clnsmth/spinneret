@@ -800,8 +800,8 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             location = Location()
             location.set_description(g.description())
             location.set_geometry_type(g.geom_type())
-
             # Identify all ecosystems at the location (i.e. for the geometry)
+
 
             # Query the WTE map server
             if g.geom_type() == "point":
@@ -822,23 +822,38 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                         # Add an explanatory comment if not resolved, to
                         # facilitate understanding and analysis.
                         location.add_comments(r.get_comments("wte"))
-            # TODO-WTE this line is run after querying WTE for envelope types,
-            #  otherwise it would be added for anything other than a point
-            # else:
-            #     location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
-
-            # TODO-WTE-envelope: Below is a preliminary implementation of
-            #  querying the WTE map server for envelope types. It is not
-            #  complete, but provides some preliminary ideas for how to
-            #  implement this functionality. Testing occurs in:
+            # FIXME-WTE: Below is a draft implementation supporting identify
+            #  operations on the WTE map server for envelope types. This should
+            #  be extended to polygons and then merged with the above code
+            #  block to in a way that is consistent (as possible) with the
+            #  queries of ECU and EMU map servers, so all three can be wrapped
+            #  in a single function for sake of simplicity.
+            #  The current implmentation uses iteration over the point geometries
+            #  representing the envelope, collecting the results in a list,
+            #  then finally appending to the location object.
+            #  A POTENTIAL SOLUTION here is to:
+            #  - allow envelope and polygon geometries into the identify operation
+            #  - convert the envelope to a polygon geometries into points
+            #  - perform iteration on the geometries
+            #  - construct an r.json response object that incorporates the results
+            #    and which mimicks the natural server response (but with a list
+            #    of ecosystem attributes, one from each identify)
+            #  - resume processing as normal.
+            #  The advantage of this approach is that it is consistent with the
+            #  point implementation for WTE and all query operations for ECU
+            #  and EMU. Additionally, understanding of the code is simplified
+            #  by placing this as close as possible to the identify operation
+            #  rather than creating long drawnout code blocks and logic that
+            #  is too much to keep in mind at once.
+            #  Testing currently occurs in:
             #  - test/test_globalelu.py::test_envelope_to_points
             #  - test/test_globalelu.py::test_eml_to_wte_json_wte_envelope
             if g.geom_type() == "envelope":
                 location.add_comments("WTE: Was queried.")
-                points = _envelope_to_points(g.to_esri_geometry())
-                ecosystems_in_envelope = []
-                ecosystems_in_envelope_comments = []
-                for point in points:
+                points = _envelope_to_points(g.to_esri_geometry())  # Differs from the point implementation
+                ecosystems_in_envelope = []  # Differs from the point implementation
+                ecosystems_in_envelope_comments = []  # Differs from the point implementation
+                for point in points:  # Differs from the point implementation
                     try:
                         r = identify(
                             geometry=point,
@@ -850,24 +865,29 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                         # Build the ecosystem object and add it to the location.
                         if r.has_ecosystem(source="wte"):
                             ecosystems = r.get_ecosystems(source="wte")
-                            # TODO Implement a uniquing function to handle this edge case
-                            #  after geometry type passing is finalized, which may negate
-                            #  the need for this edge case handling.
-                            ecosystems_in_envelope.append(
+                            # TODO Implement a uniquing function to handle the
+                            #  envelope and polygon edge cases. The common pattern
+                            #  is to do this as a subroutine of get_ecosystems()
+                            #  but is temporarily being implemented here until
+                            #  a good design pattern is found. Proposed design
+                            #  patterns are:
+                            #
+                            ecosystems_in_envelope.append( # Differs from the point implementation
                                 json.dumps(ecosystems[0]))
                         else:
                             # Add an explanatory comment if not resolved, to
                             # facilitate understanding and analysis.
-                            ecosystems_in_envelope_comments.append(r.get_comments("wte"))
-                ecosystems_in_envelope = list(set(ecosystems_in_envelope))
-                ecosystems_in_envelope = [json.loads(e) for e in ecosystems_in_envelope]
-                ecosystems_in_envelope_comments = list(set(ecosystems_in_envelope_comments))  # TODO Investigate this code. Not sure if it's doing what it is supposed to.
-                # TODO end of the two TODO's above ----------------------------
-                location.add_ecosystem(ecosystems_in_envelope)
-                location.add_comments(ecosystems_in_envelope_comments)
+                            ecosystems_in_envelope_comments.append(r.get_comments("wte")) # Differs from the point implementation
+                ecosystems_in_envelope = list(set(ecosystems_in_envelope))  # Differs from the point implementation
+                ecosystems_in_envelope = [json.loads(e) for e in ecosystems_in_envelope]  # Differs from the point implementation
+                ecosystems_in_envelope_comments = list(set(ecosystems_in_envelope_comments))  # Differs from the point implementation # TODO Haven't tested the envelope comments code yet.
+                location.add_ecosystem(ecosystems_in_envelope)  # Differs from the point implementation
+                location.add_comments(ecosystems_in_envelope_comments)  # Differs from the point implementation
+                # TODO end of draft implementation for envelopes ----------------------------
             # TODO Post the comment below for polygons only.
-            # else:
-            #     location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
+            if g.geom_type() == "polygon":  # TODO Remove me when the above is implemented for polygons
+                location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
+
 
             # Query the ECU map server
             location.add_comments("ECU: Was queried.")
