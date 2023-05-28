@@ -340,6 +340,11 @@ class Response:
     def __init__(self, json, geometry):
         self.json = json
         self.geometry = geometry
+    # def __init__(self, json, geometry, comments):  # TODO-comment: Add a comment attributes for collecting identify/query related response info
+    #     self.json = json
+    #     self.geometry = geometry
+    #     self.comments = comments
+
 
     def get_attributes(self, attributes):
         """Recursively get attributes of a response from an identify or query
@@ -382,7 +387,6 @@ class Response:
                 return "WTE: Location is out of bounds."
             if len(pv) > 0 and pv[0] == "NoData":
                 return "WTE: Location is an area of water."
-            return "WTE: Location is a terrestrial ecosystem."
         return None
 
     def has_ecosystem(self, source):
@@ -632,8 +636,13 @@ def identify(geometry=str, map_server=str):
         "mapExtent": "-2.865, 47.628, 5.321, 50.017",
         "imageDisplay": "600,550,96"
     }
-    r = requests.get(base, params=payload, timeout=10, headers=user_agent())
-    return Response(json=r.json(), geometry=geometry)
+    comments = []  # TODO-comment: Initilaize the list of comments
+    if in_map_extent(geometry, source="wte"):  # TODO-comment: Comment if geometry is outside of the map server extent
+        comments.append("WTE: Was queried.")  # TODO-comment
+        r = requests.get(base, params=payload, timeout=10, headers=user_agent())
+    else:
+        comments.append("WTE: Was outside of the map server extent.")  # TODO-comment
+    return Response(json=r.json(), geometry=geometry, comments=comments) # TODO-comment: Add comments to response object
 
 
 def query(geometry=str, map_server=str):
@@ -741,8 +750,14 @@ def query(geometry=str, map_server=str):
                 layer +
                 "/query"
         )
-    r = requests.get(base, params=payload, timeout=10, headers=user_agent())
-    return Response(json=r.json(), geometry=geometry)
+    comments = []  # TODO-comment: Initilaize the list of comments
+    if in_map_extent(geometry,
+                     source=map_server):  # TODO-comment: Comment if geometry is outside of the map server extent
+        comments.append(map_server + ": Was queried.")  # TODO-comment
+        r = requests.get(base, params=payload, timeout=10, headers=user_agent())
+    else:
+        comments.append(map_server + ": Was outside of the map server extent.")  # TODO-comment
+    return Response(json=r.json(), geometry=geometry, comments=comments)
 
 
 def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
@@ -805,7 +820,6 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
 
             # Query the WTE map server
             if g.geom_type() == "point":
-                location.add_comments("WTE: Was queried.")
                 try:
                     r = identify(
                         geometry=g.to_esri_geometry(),
@@ -813,15 +827,17 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                     )
                 except ConnectionError:
                     r = None
+                    location.add_comments("WTE: Connection error. Please try again.")  # TODO: This should be more informative
                 if r is not None:
                     # Build the ecosystem object and add it to the location.
                     if r.has_ecosystem(source="wte"):
                         ecosystems = r.get_ecosystems(source="wte")
                         location.add_ecosystem(ecosystems)
-                    else:
+                    # else:
                         # Add an explanatory comment if not resolved, to
                         # facilitate understanding and analysis.
-                        location.add_comments(r.get_comments("wte"))
+                        # location.add_comments(r.get_comments("wte"))  # TODO-comment: Atomize get_comments into checks closer the operations to be more flexible rather than a blanket operation
+                    location.add_comments(r.get_comments())  # TODO-comment: Transfer comments from Response to Location
             # FIXME-WTE: Below is a draft implementation supporting identify
             #  operations on the WTE map server for envelope types. This should
             #  be extended to polygons and then merged with the above code
@@ -861,6 +877,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                         )
                     except ConnectionError:
                         r = None
+                        location.add_comments("WTE: Connection error. Please try again.")  # TODO: This should be more informative
                     if r is not None:
                         # Build the ecosystem object and add it to the location.
                         if r.has_ecosystem(source="wte"):
@@ -884,13 +901,10 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 location.add_ecosystem(ecosystems_in_envelope)  # Differs from the point implementation
                 location.add_comments(ecosystems_in_envelope_comments)  # Differs from the point implementation
                 # TODO end of draft implementation for envelopes ----------------------------
-            # TODO Post the comment below for polygons only.
-            if g.geom_type() == "polygon":  # TODO Remove me when the above is implemented for polygons
-                location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
+
 
 
             # Query the ECU map server
-            location.add_comments("ECU: Was queried.")
             try:
                 r = query(
                     geometry=g.to_esri_geometry(),
@@ -898,6 +912,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 )
             except ConnectionError:
                 r = None
+                location.add_comments("ECU: Connection error. Please try again.")  # TODO: This should be more informative
             if r is not None:
                 # Build the ecosystem object and add it to the location.
                 if r.has_ecosystem(source="ecu"):
@@ -907,9 +922,13 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 #     # Add an explanatory comment if not resolved, to
                 #     # facilitate understanding and analysis.
                 #     location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
+                location.add_comments(r.get_comments())  # TODO-comment: Stub Transfer comments from Response to Location
 
             # Query the EMU map server
+            # First comment on whether the map server was queried
+            # TODO-comment: Comment if geometry is outside of the map server extent
             location.add_comments("EMU: Was queried.")
+            # Now place the query
             try:
                 r = query(
                     geometry=g.to_esri_geometry(),
@@ -917,6 +936,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 )
             except ConnectionError:
                 r = None
+                location.add_comments("EMU: Connection error. Please try again.")  # TODO: This should be more informative
             if r is not None:
                 # Build the ecosystem object and add it to the location.
                 if r.has_ecosystem(source="emu"):
@@ -926,6 +946,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 #     # Add an explanatory comment if not resolved, to
                 #     # facilitate understanding and analysis.
                 #     location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
+                location.add_comments(r.get_comments())  # TODO-comment: Stub Transfer comments from Response to Location
 
 
             # TODO Query the Freshwater map server
@@ -1292,12 +1313,12 @@ if __name__ == "__main__":
     #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
     #     overwrite=True
     # )
-    # # For local testing
-    # eml_to_wte_json(
-    #     eml_dir="/Users/csmith/Data/edi/eml/",
-    #     output_dir="/Users/csmith/Data/edi/json/",
-    #     overwrite=True
-    # )
+    # For local testing
+    eml_to_wte_json(
+        eml_dir="/Users/csmith/Data/edi/eml/",
+        output_dir="/Users/csmith/Data/edi/json/",
+        overwrite=True
+    )
 
     # # Combine json files into a single dataframe
     # df = wte_json_to_df(json_dir="/Users/csmith/Data/edi/json/")
