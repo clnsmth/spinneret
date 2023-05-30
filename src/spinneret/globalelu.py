@@ -78,8 +78,19 @@ class Location:
         self.data["geometry_type"] = geometry_type
 
     def add_comments(self, comments):
-        # TODO should not add anything if is an empty list or None,
-        self.data["comments"].append(comments)
+        # Don't add empty comments. They are not useful.
+        if comments is None:
+            pass
+        elif isinstance(comments, list):
+            if len(comments) == 0:
+                pass
+            for comment in comments:
+                # Append each comment to the list of comments, so we don't
+                # end up with nested lists in the location comments attribute.
+                self.data["comments"].append(comment)
+        else:
+            self.data["comments"].append(comments)
+
 
     def add_ecosystem(self, ecosystem):
         # TODO should not add anything if is an empty list or None,?
@@ -340,10 +351,6 @@ class Response:
     def __init__(self, json, geometry):
         self.json = json
         self.geometry = geometry
-    # def __init__(self, json, geometry, comments):  # TODO-comment: Add a comment attributes for collecting identify/query related response info
-    #     self.json = json
-    #     self.geometry = geometry
-    #     self.comments = comments
 
 
     def get_attributes(self, attributes):
@@ -383,8 +390,6 @@ class Response:
         """
         if source == "wte":
             pv = _json_extract(self.json, "Pixel Value")
-            if len(pv) == 0:
-                return "WTE: Location is out of bounds."
             if len(pv) > 0 and pv[0] == "NoData":
                 return "WTE: Location is an area of water."
         return None
@@ -636,13 +641,8 @@ def identify(geometry=str, map_server=str):
         "mapExtent": "-2.865, 47.628, 5.321, 50.017",
         "imageDisplay": "600,550,96"
     }
-    comments = []  # TODO-comment: Initilaize the list of comments
-    if in_map_extent(geometry, source="wte"):  # TODO-comment: Comment if geometry is outside of the map server extent
-        comments.append("WTE: Was queried.")  # TODO-comment
-        r = requests.get(base, params=payload, timeout=10, headers=user_agent())
-    else:
-        comments.append("WTE: Was outside of the map server extent.")  # TODO-comment
-    return Response(json=r.json(), geometry=geometry, comments=comments) # TODO-comment: Add comments to response object
+    r = requests.get(base, params=payload, timeout=10, headers=user_agent())
+    return Response(json=r.json(), geometry=geometry)
 
 
 def query(geometry=str, map_server=str):
@@ -750,14 +750,8 @@ def query(geometry=str, map_server=str):
                 layer +
                 "/query"
         )
-    comments = []  # TODO-comment: Initilaize the list of comments
-    if in_map_extent(geometry,
-                     source=map_server):  # TODO-comment: Comment if geometry is outside of the map server extent
-        comments.append(map_server + ": Was queried.")  # TODO-comment
-        r = requests.get(base, params=payload, timeout=10, headers=user_agent())
-    else:
-        comments.append(map_server + ": Was outside of the map server extent.")  # TODO-comment
-    return Response(json=r.json(), geometry=geometry, comments=comments)
+    r = requests.get(base, params=payload, timeout=10, headers=user_agent())
+    return Response(json=r.json(), geometry=geometry)
 
 
 def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
@@ -820,6 +814,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
 
             # Query the WTE map server
             if g.geom_type() == "point":
+                location.add_comments("WTE: Was queried.")
                 try:
                     r = identify(
                         geometry=g.to_esri_geometry(),
@@ -833,11 +828,10 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                     if r.has_ecosystem(source="wte"):
                         ecosystems = r.get_ecosystems(source="wte")
                         location.add_ecosystem(ecosystems)
-                    # else:
+                    else:
                         # Add an explanatory comment if not resolved, to
                         # facilitate understanding and analysis.
-                        # location.add_comments(r.get_comments("wte"))  # TODO-comment: Atomize get_comments into checks closer the operations to be more flexible rather than a blanket operation
-                    location.add_comments(r.get_comments())  # TODO-comment: Transfer comments from Response to Location
+                        location.add_comments(r.get_comments("wte"))  # TODO-comments: Don't add comments if None
             # FIXME-WTE: Below is a draft implementation supporting identify
             #  operations on the WTE map server for envelope types. This should
             #  be extended to polygons and then merged with the above code
@@ -897,14 +891,20 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                             ecosystems_in_envelope_comments.append(r.get_comments("wte")) # Differs from the point implementation
                 ecosystems_in_envelope = list(set(ecosystems_in_envelope))  # Differs from the point implementation
                 ecosystems_in_envelope = [json.loads(e) for e in ecosystems_in_envelope]  # Differs from the point implementation
-                ecosystems_in_envelope_comments = list(set(ecosystems_in_envelope_comments))  # Differs from the point implementation # TODO Haven't tested the envelope comments code yet.
+                # FIXME This creates a list of comments in the response object.
+                #  This should only be a string, however, more than one
+                #  comment may result from multiple queries. What to do?
+                ecosystems_in_envelope_comments = list(set(ecosystems_in_envelope_comments))  # Differs from the point implementation
                 location.add_ecosystem(ecosystems_in_envelope)  # Differs from the point implementation
                 location.add_comments(ecosystems_in_envelope_comments)  # Differs from the point implementation
                 # TODO end of draft implementation for envelopes ----------------------------
+            if g.geom_type() == "polygon":
+                location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
 
 
 
             # Query the ECU map server
+            location.add_comments("ECU: Was queried.")
             try:
                 r = query(
                     geometry=g.to_esri_geometry(),
@@ -918,17 +918,13 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 if r.has_ecosystem(source="ecu"):
                     ecosystems = r.get_ecosystems(source="ecu")
                     location.add_ecosystem(ecosystems)
-                # else:
-                #     # Add an explanatory comment if not resolved, to
-                #     # facilitate understanding and analysis.
-                #     location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
-                location.add_comments(r.get_comments())  # TODO-comment: Stub Transfer comments from Response to Location
+                else:
+                    # Add an explanatory comment if not resolved, to
+                    # facilitate understanding and analysis.
+                    location.add_comments(r.get_comments("ecu"))
 
             # Query the EMU map server
-            # First comment on whether the map server was queried
-            # TODO-comment: Comment if geometry is outside of the map server extent
             location.add_comments("EMU: Was queried.")
-            # Now place the query
             try:
                 r = query(
                     geometry=g.to_esri_geometry(),
@@ -942,11 +938,10 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 if r.has_ecosystem(source="emu"):
                     ecosystems = r.get_ecosystems(source="emu")
                     location.add_ecosystem(ecosystems)
-                # else:
-                #     # Add an explanatory comment if not resolved, to
-                #     # facilitate understanding and analysis.
-                #     location.add_comments(r.get_comments("ecu"))  # FIXME This creates a NULL value in the json file
-                location.add_comments(r.get_comments())  # TODO-comment: Stub Transfer comments from Response to Location
+                else:
+                    # Add an explanatory comment if not resolved, to
+                    # facilitate understanding and analysis.
+                    location.add_comments(r.get_comments("ecu"))
 
 
             # TODO Query the Freshwater map server
