@@ -955,15 +955,17 @@ def test_eml_to_wte_json():
         for f in fnames_in:
             assert getmtime(join(tmpdir, f + ".json")) != dates[f]
 
+
 def test_eml_to_wte_json_wte_envelope(geocov):
     """Test the eml_to_wte_json() function with a WTE envelope."""
+
     # FIXME: This test is a temporary approach to testing how envelopes are
     #  handled by the ecosystem lookup on the WTE server. It is essentially a
     #  manual integration test, and will be removed in the future.
     g = geocov[0]  # Envelope encompassing multiple ecosystems
     geometry = g.to_esri_geometry()
     ecosystems_in_envelope = []
-    points = globalelu._envelope_to_points(geometry)
+    points = globalelu._polygon_or_envelope_to_points(geometry)
     for point in points:
         try:
             r = globalelu.identify(
@@ -986,6 +988,37 @@ def test_eml_to_wte_json_wte_envelope(geocov):
     assert len(ecosystems_in_envelope) == 4
     for item in ecosystems_in_envelope:
         assert isinstance(item, dict)
+
+    # TODO refactor this test according to any changes made above. This is a
+    #  copy.
+
+    g = geocov[3]  # Polygon encompassing multiple ecosystems
+    geometry = g.to_esri_geometry()
+    ecosystems_in_envelope = []
+    points = globalelu._polygon_or_envelope_to_points(geometry)
+    for point in points:
+        try:
+            r = globalelu.identify(
+                geometry=point,
+                map_server="wte"
+            )
+        except ConnectionError:
+            r = None
+        if r is not None:
+            # Build the ecosystem object and add it to the location.
+            if r.has_ecosystem(source="wte"):
+                ecosystems = r.get_ecosystems(source="wte")
+                # TODO Implement a uniquing function to handle this edge case
+                #  after geometry type passing is finalized, which may negate
+                #  the need for this edge case handling.
+                ecosystems_in_envelope.append(json.dumps(ecosystems[0]))
+    ecosystems_in_envelope = list(set(ecosystems_in_envelope))
+    ecosystems_in_envelope = [json.loads(e) for e in ecosystems_in_envelope]
+    # TODO (end TODO) -----------------------------------------------
+    assert len(ecosystems_in_envelope) == 1
+    for item in ecosystems_in_envelope:
+        assert isinstance(item, dict)
+
 
 def test_convert_codes_to_values(geocov):
     """Test the convert_codes_to_values method.
@@ -1195,16 +1228,17 @@ def test__is_point_location():
     assert globalelu._is_point_location(polygon) is False
 
 
-def test__envelope_to_points(geocov):
-    """Test the _envelope_to_points method.
+def test__polygon_or_envelope_to_points(geocov):
+    """Test the _polygon_or_envelope_to_points method.
 
-    The _envelope_to_points method should return a list of points that
-    represent the corners of the envelope in addtion to the midpoint of the
-    envelope.
+    The _polygon_or_envelope_to_points method should return a list of points
+    that represent the vertices of the polygon or envelope in addition to the
+    centroid.
     """
+    # Test an envelope
     g = geocov[0]
     geometry = g.to_esri_geometry()
-    points = globalelu._envelope_to_points(geometry)
+    points = globalelu._polygon_or_envelope_to_points(geometry)
     # The method returns a list of 5 points
     assert isinstance(points, list)
     assert len(points) == 5
@@ -1247,4 +1281,42 @@ def test__envelope_to_points(geocov):
     assert point["spatialReference"] == geometry_dict["spatialReference"]
     assert point["zmin"] == geometry_dict["zmin"]
     assert point["zmax"] == geometry_dict["zmax"]
+
+    # Test a polygon
+    g = geocov[3]
+    geometry = g.to_esri_geometry()
+    points = globalelu._polygon_or_envelope_to_points(geometry)
+    # The method returns a list of 4 points
+    assert isinstance(points, list)
+    assert len(points) == 4
+    # First 3 points equal the vertices of the polygon
+    geometry_dict = json.loads(geometry)
+    geometry_corners = set([item for sublist in geometry_dict["rings"][0] for item in sublist])
+    for i in [0, 1, 2]:
+        assert isinstance(points[i], str)
+        point = json.loads(points[i])
+        # Min and max values are equal for points
+        assert point["xmin"] == point["xmax"]
+        assert point["ymin"] == point["ymax"]
+        # The point is a vertice of the polygon
+        assert point["xmin"] in geometry_corners
+        assert point["ymin"] in geometry_corners
+        # Spatial reference is not modified by this method
+        assert point["spatialReference"] == geometry_dict["spatialReference"]
+    # The last point is the centriod of the polygon and passes the same tests
+    # as the first 3 points. Note, this equivalence testing against the prior
+    # 3 points is needed because the method handling the 4 is different and
+    # we want to ensure that the same tests are applied.
+    assert isinstance(points[3], str)
+    point = json.loads(points[3])
+    # Min and max values are equal for points
+    assert point["xmin"] == point["xmax"]
+    assert point["ymin"] == point["ymax"]
+    # The centroid point is somewhere between the x and y bounds of the polygon
+    xbounds = [item[0] for item in geometry_dict["rings"][0]]
+    ybounds = [item[1] for item in geometry_dict["rings"][0]]
+    assert point["xmin"] > min(xbounds) and point["xmin"] < max(xbounds)
+    assert point["ymin"] > min(ybounds) and point["ymin"] < max(ybounds)
+    # Spatial reference and z values are not modified by this method
+    assert point["spatialReference"] == geometry_dict["spatialReference"]
 

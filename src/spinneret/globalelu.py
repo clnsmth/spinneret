@@ -831,7 +831,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                     else:
                         # Add an explanatory comment if not resolved, to
                         # facilitate understanding and analysis.
-                        location.add_comments(r.get_comments("wte"))  # TODO-comments: Don't add comments if None
+                        location.add_comments(r.get_comments("wte"))
             # FIXME-WTE: Below is a draft implementation supporting identify
             #  operations on the WTE map server for envelope types. This should
             #  be extended to polygons and then merged with the above code
@@ -856,11 +856,10 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             #  rather than creating long drawnout code blocks and logic that
             #  is too much to keep in mind at once.
             #  Testing currently occurs in:
-            #  - test/test_globalelu.py::test_envelope_to_points
             #  - test/test_globalelu.py::test_eml_to_wte_json_wte_envelope
-            if g.geom_type() == "envelope":
+            if g.geom_type() == "envelope" or g.geom_type() == "polygon":
                 location.add_comments("WTE: Was queried.")
-                points = _envelope_to_points(g.to_esri_geometry())  # Differs from the point implementation
+                points = _polygon_or_envelope_to_points(g.to_esri_geometry())  # Differs from the point implementation
                 ecosystems_in_envelope = []  # Differs from the point implementation
                 ecosystems_in_envelope_comments = []  # Differs from the point implementation
                 for point in points:  # Differs from the point implementation
@@ -898,8 +897,8 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 location.add_ecosystem(ecosystems_in_envelope)  # Differs from the point implementation
                 location.add_comments(ecosystems_in_envelope_comments)  # Differs from the point implementation
                 # TODO end of draft implementation for envelopes ----------------------------
-            if g.geom_type() == "polygon":
-                location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
+            # if g.geom_type() == "polygon":
+            #     location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
 
 
 
@@ -1229,8 +1228,8 @@ def _is_point_location(geometry):
         return True
     return False
 
-def _envelope_to_points(geometry):
-    """Convert an envelope to a list of points
+def _polygon_or_envelope_to_points(geometry):
+    """Convert a polygon or envelope to a list of points
 
     Parameters
     ----------
@@ -1246,17 +1245,35 @@ def _envelope_to_points(geometry):
     -----
     For improving the results from the WTE identify responses. Currently, the
     identify operation returns the midpoint of the envelope. This function
-    returns the four corners of the envelope in addition to the midpoint. This
-    function could likely be improved.
+    returns the vertices of a polygon or envelope in addition to the centroid.
+    This function could likely be improved.
+
+    Currently, this only operates on the outer ring of a polygon. Inner rings
+    are not considered. A warning is thrown if inner rings are present, because
+    the centroid will be incorrect.
     """
+    geometry_type = _get_geometry_type(geometry)
     geometry = json.loads(geometry)
-    # Create a GeoSeries with the four corners of the envelope
-    bounds = [
-        (geometry.get("xmin"), geometry.get("ymin")),
-        (geometry.get("xmax"), geometry.get("ymin")),
-        (geometry.get("xmax"), geometry.get("ymax")),
-        (geometry.get("xmin"), geometry.get("ymax"))
-    ]
+    # TODO-merge: Create xy series based on whether the geometry is a polygon
+    #  or a envelope.
+    if geometry_type == "esriGeometryPolygon":
+        # Create a GeoSeries with the vertices of the polygon
+        bounds = []
+        for xy_pair in geometry.get("rings")[0]:
+            x, y = xy_pair
+            bounds.append((x, y))
+        # Bump off the last one since it is the same as the first
+        bounds.pop()
+        # TODO Throw a warning when inner ring is present, because the centriod
+        #  will be incorrect.
+    elif geometry_type == "esriGeometryEnvelope":
+        # Create a GeoSeries with the four corners of the envelope
+        bounds = [
+            (geometry.get("xmin"), geometry.get("ymin")),
+            (geometry.get("xmax"), geometry.get("ymin")),
+            (geometry.get("xmax"), geometry.get("ymax")),
+            (geometry.get("xmin"), geometry.get("ymax"))
+        ]
     # Construct point geometries from the envelope corners
     res = []
     for corner in bounds:
@@ -1273,9 +1290,9 @@ def _envelope_to_points(geometry):
                 }
             )
         )
-    # Get the centroid of the rectangle
-    rectangle = gpd.GeoSeries(Polygon(bounds))
-    centroid = rectangle.centroid
+    # Get the centroid of the geometry
+    shape = gpd.GeoSeries(Polygon(bounds))
+    centroid = shape.centroid
     # TODO Use one single consistent approach to transferring values to the
     #  result for simplicity.
     res.append(
