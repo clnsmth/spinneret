@@ -306,10 +306,27 @@ class Attributes:
         EMU_Descriptor = [f.get("label") for f in self.data.values()]
         # Knock of the last one, which is EMU_Descriptor
         EMU_Descriptor = EMU_Descriptor[:-1]
+
+        # FIXME: This is a hack to deal with the fact that some of the
+        #  attributes are None. This is a problem with the data, not the
+        #  code. The code should be fixed to deal with this. This is related
+        #  to the FIXMEs in convert_codes_to_values. The issue can be
+        #  reproduced by running on the geographic coverage in the file
+        #  knb-lter-sbc.100.11.xml.
+        if None in EMU_Descriptor:
+            EMU_Descriptor = ["n/a" if f is None else f for f in EMU_Descriptor]
+
         EMU_Descriptor = ", ".join(EMU_Descriptor)
         EMU_Descriptor_annotation = [f.get("annotation") for f in self.data.values()]
         # Knock of the last one, which is EMU_Descriptor
         EMU_Descriptor_annotation = EMU_Descriptor_annotation[:-1]
+
+        # FIXME: This is a hack to deal with the fact that some of the
+        #  attributes are None. Not sure why this is happening. Recreate this
+        #  issue by running on geographic coverage in the file knb-lter-sbc.100.11.xml
+        if None in EMU_Descriptor_annotation:
+            EMU_Descriptor_annotation = ["Placeholder" if f is None else f for f in EMU_Descriptor_annotation]
+
         EMU_Descriptor_annotation = "|".join(EMU_Descriptor_annotation)
         self.data["EMU_Descriptor"] = {
             "label": EMU_Descriptor,
@@ -332,12 +349,13 @@ class Attributes:
             return "Placeholder"  # TODO - add ECU sssom and parse
         elif source == "emu":
             return "Placeholder"  # TODO - add EMU sssom and parse
-        res = sssom.loc[
-            sssom["subject_label"] == label.lower(),
-            "object_id"
-        ].values[0]
-        return res
-
+        # FIXME This commented code isn't working when run on local files
+        # res = sssom.loc[
+        #     sssom["subject_label"] == label.lower(),
+        #     "object_id"
+        # ].values[0]
+        # return res
+        return "Placeholder"
 
 class Response:
     """A class to parse the response from the identify operation
@@ -403,6 +421,8 @@ class Response:
                 return False
             return True
         elif source == "ecu" or source == "emu":
+            # FIXME: This produces an error when running the geographic coverage
+            #  in the file knb-lter-ntl.420.2.
             res = len(self.json["features"])
             if res == 0:
                 return False
@@ -548,15 +568,32 @@ class Response:
             for i in range(len(self.json.get("features"))):
                 # OceeanName
                 code = self.json.get("features")[i]["attributes"]["OceanName"]
-                value = ocean_name_map.loc[
-                    ocean_name_map["code"] == code, "name"
-                ].iloc[0]
+
+                # FIXME: Not all locations have OceanName values (e.g. is a
+                #  bay or lake). There is probably a better value to use here.
+                #  To recreate this issue run on the geographic coverage
+                #  present in knb-lter-bes.5025.1.xml
+                if code is None:
+                    value = "Not an ocean"
+                else:
+                    value = ocean_name_map.loc[
+                        ocean_name_map["code"] == code, "name"
+                    ].iloc[0]
+
                 self.json.get("features")[i]["attributes"]["OceanName"] = value
                 # Name_2018
                 code = self.json.get("features")[i]["attributes"]["Name_2018"]
-                value = name_2018_map.loc[
-                    name_2018_map["code"] == code, "name"
-                ].iloc[0]
+
+                # FIXME Not all locations have Name_2018 values (not sure why
+                #  this is the case). To recreate this issue run on the
+                #  geographic coverage present in knb-lter-sbc.100.11.xml,
+                #  edi.99.5.xml.
+                try:
+                    value = name_2018_map.loc[
+                        name_2018_map["code"] == code, "name"
+                    ].iloc[0]
+                except IndexError:
+                    value = "n/a"
                 self.json.get("features")[i]["attributes"]["Name_2018"] = value
 
     def get_ecosystems_for_geometry_z_values(self, source="emu"):
@@ -955,7 +992,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
 
 
 def wte_json_to_df(json_dir):
-    """Combine WTE json files into a single dataframe
+    """Combine WTE json files into a single long dataframe
 
     Parameters
     ----------
@@ -966,10 +1003,6 @@ def wte_json_to_df(json_dir):
     -------
     df : pandas.DataFrame
         A dataframe of the WTE ecosystems
-
-    Examples
-    --------
-    # >>> df = wte_json_to_wte_df(json_dir='data/json/')
     """
     files = glob.glob(json_dir + "*.json")
     if not files:
@@ -977,116 +1010,87 @@ def wte_json_to_df(json_dir):
     res = []
     for file in files:
         with open(file, "r", encoding="utf-8") as f:
-            # res.append(json.load(f)['results'])
+            # output = {
+            #     "dataset": None,
+            #     "description": None,
+            #     "geometry_type": None,
+            #     "comments": None,
+            #     "source": None,
+            #     "attributes": None
+            # }
             j = json.load(f)
-            wte = j["WTE"][0]["results"]
-            res_attr = {}
-            if len(wte) > 0:  # Not empty
-                # Parse wte
-                attributes = [
-                    "Landforms",
-                    "Landcover",
-                    "Climate_Re",
-                    "Moisture",
-                    "Temperatur",
-                ]
-                for a in attributes:
-                    res_attr[a] = _json_extract(wte, a)
+            dataset = j.get("dataset")
+            location = j.get("location")
+            if len(location) == 0:
+                res.append(
+                    {
+                        "dataset": dataset,
+                        "description": None,
+                        "geometry_type": None,
+                        "comments": None,
+                        "source": None,
+                        "attributes": None
+                    }
+                )
             else:
-                res_attr = {
-                    "Landforms": [],
-                    "Landcover": [],
-                    "Climate_Re": [],
-                    "Moisture": [],
-                    "Temperatur": [],
-                }
-            # Combine with additional metadata
-            edi = j["WTE"][0]["additional_metadata"]
-            res_attr.update(edi)
-            res.append(res_attr)
-
-    # res_flat = [item for sublist in res for item in sublist]
-    # Attributes of an identify operation may list multiple values. These
-    # values are stored as a list, which need to be unnested into separate
-    # rows.
-    # df = pd.DataFrame(res_flat)
+                for loc in location:
+                    description = loc.get("description")
+                    geometry_type = loc.get("geometry_type")
+                    comments = loc.get("comments")
+                    # FIXME: Use list comprehension to convert None values to empty
+                    #  strings to handle an unexpected edge case.
+                    comments = ["" if c is None else c for c in comments]
+                    comments = " ".join(comments)
+                    ecosystem = loc.get("ecosystem")
+                    if len(ecosystem) == 0:
+                        res.append(
+                            {
+                                "dataset": dataset,
+                                "description": description,
+                                "geometry_type": geometry_type,
+                                "comments": comments,
+                                "source": None,
+                                "attributes": None
+                            }
+                        )
+                    else:
+                        for eco in ecosystem:
+                            source = eco.get("source")
+                            descriptor = _json_extract(eco, "label")
+                            attributes = descriptor[-1]
+                            res.append(
+                                {
+                                    "dataset": dataset,
+                                    "description": description,
+                                    "geometry_type": geometry_type,
+                                    "comments": comments,
+                                    "source": source,
+                                    "attributes": attributes
+                                }
+                            )
+    # Convert to dataframe
     df = pd.DataFrame(res)
-    df = df.explode("Landforms")
-    df = df.explode("Landcover")
-    df = df.explode("Climate_Re")
-    df = df.explode("Moisture")
-    df = df.explode("Temperatur")
-    df = df.explode("geographicDescription")
-    # Sorting datasets by a packageId's scope and identifier is provides an
-    # intuitive ordering for browsing by information managers.
-    df["scope"] = df["file"].str.split(".", expand=True)[0]
-    df["identifier"] = (
-        df["file"].str.split(".", expand=True)[1]
-        + "."
-        + df["file"].str.split(".", expand=True)[2]
-    )
-    df["identifier"] = df["identifier"].astype(float)
+    # Sort for readability
+    df[["scope", "identifier"]] = df["dataset"].str.split(".", n=1, expand=True)
+    df["identifier"] = pd.to_numeric(df["identifier"])
     df = df.sort_values(by=["scope", "identifier"])
-    df = df[
-        [
-            "Landforms",
-            "Landcover",
-            "Climate_Re",
-            "Moisture",
-            "Temperatur",
-            "file",
-            "geographicDescription",
-            "geometry",
-            "comments",
-        ]
-    ]
-    # df = df.rename(columns={"Climate_Re": "Climate_Region"})
-    # Add "water" to the Landcover column if the comments column contains
-    # "Is an aquatic ecosystem."
-    df.loc[
-        df["comments"].str.contains("Is an aquatic ecosystem."), "Landcover"
-    ] = "water"
-    with open("data/sssom/wte-envo.sssom.tsv", "r", encoding='utf-8') as f:
-        sssom = pd.read_csv(f, sep="\t")
-    # Convert the subject_label column to lowercase
-    sssom["subject_label"] = sssom["subject_label"].str.lower()
-    # Convert the Landforms column to lowercase
-    df["Landforms"] = df["Landforms"].str.lower()
-    # Convert the Landcover column to lowercase
-    df["Landcover"] = df["Landcover"].str.lower()
-    # Convert the Climate_Re column to lowercase
-    df["Climate_Re"] = df["Climate_Re"].str.lower()
-    # Convert the Moisture column to lowercase
-    df["Moisture"] = df["Moisture"].str.lower()
-    # Convert the Temperatur column to lowercase
-    df["Temperatur"] = df["Temperatur"].str.lower()
-
-    # Match values in the "Landforms" column to ENVO terms using the sssom
-    # dataframe.
-    df["ENVO_Landforms"] = df["Landforms"].map(
-        sssom.set_index("subject_label")["object_id"]
+    df = df.drop(columns=["scope", "identifier"])
+    # Rename columns for readability
+    df = df.rename(
+        columns={
+            "dataset": "package_id",
+            "description": "location_description",
+            "source": "ecosystem_type",
+            "attributes": "ecosystem_attributes"
+        }
     )
-    # Mach values in the "Landcover" column to ENVO terms using the sssom
-    # dataframe.
-    df["ENVO_Landcover"] = df["Landcover"].map(
-        sssom.set_index("subject_label")["object_id"]
-    )
-    # Mach values in the "Moisture" column to ENVO terms using the sssom
-    # dataframe.
-    df["ENVO_Moisture"] = df["Moisture"].map(
-        sssom.set_index("subject_label")["object_id"]
-    )
-    # Mach values in the "Temperatur" column to ENVO terms using the sssom
-    # dataframe.
-    df["ENVO_Temperatur"] = df["Temperatur"].map(
-        sssom.set_index("subject_label")["object_id"]
-    )
-    # Combine the "ENVO_Moisture" and "ENVO_Temperatur" columns into a single
-    # column named "ENVO_Climate_Re" with a pipe (|) delimiter.
-    df["ENVO_Climate_Re"] = df["ENVO_Moisture"] + "|" + df["ENVO_Temperatur"]
-    # Drop the "ENVO_Moisture" and "ENVO_Temperatur" columns.
-    df = df.drop(
-        columns=["ENVO_Moisture", "ENVO_Temperatur", "Moisture", "Temperatur"]
+    # Convert acronyms (of ecosystem types) to more descriptive names
+    df["ecosystem_type"] = df["ecosystem_type"].replace(
+        {
+            "wte": "Terrestrial",
+            "ecu": "Coastal",
+            "emu": "Marine"
+        }
     )
     return df
 
@@ -1325,20 +1329,21 @@ if __name__ == "__main__":
     #     output_dir="/Users/csmith/Code/spinneret/src/spinneret/data/json/",
     #     overwrite=True
     # )
-    # For local testing
-    eml_to_wte_json(
-        eml_dir="/Users/csmith/Data/edi/eml/",
-        output_dir="/Users/csmith/Data/edi/json/",
-        overwrite=True
-    )
+    # # For local testing
+    # eml_to_wte_json(
+    #     eml_dir="/Users/csmith/Data/edi/top_20_eml/",
+    #     output_dir="/Users/csmith/Data/edi/top_20_json/",
+    #     overwrite=False
+    # )
 
-    # # Combine json files into a single dataframe
-    # df = wte_json_to_df(json_dir="/Users/csmith/Data/edi/json/")
-    # # print(df)
+    # Combine json files into a single dataframe
+    df = wte_json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/")
+    print("42")
 
-    # # Write df to tsv
-    # output_dir = "/Users/csmith/Data/edi/"
-    # df.to_csv(output_dir + "globalelu.tsv", sep="\t", index=False)
+    # Write df to tsv
+    import csv
+    output_dir = "/Users/csmith/Data/edi/"
+    df.to_csv(output_dir + "globalelu.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
 
     # # Summarize WTE results
     # res = summarize_wte_results(df)
