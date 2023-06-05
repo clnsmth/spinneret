@@ -791,6 +791,184 @@ def query(geometry=str, map_server=str):
     return Response(json=r.json(), geometry=geometry)
 
 
+def convert_point_to_envelope(geometry, buffer=None):
+    """Convert an esriGeometryPoint to an esriGeometryEnvelope
+
+    Parameters
+    ----------
+    geometry : dict
+        An esriGeometryEnvelope representing a point
+    buffer : float
+        The distance in kilometers to buffer the point. The buffer is a radius
+        around the point. The default is 0.5.
+
+    Returns
+    -------
+    str : ESRI JSON envelope geometry
+
+    Notes
+    -----
+    This function assumes the coordinate reference system of the input
+    geometry is EPSG:4326.
+    """
+    if not _is_point_location(geometry) or buffer is None:
+        return geometry
+    geometry = json.loads(geometry)
+    df = pd.DataFrame([{'longitude': geometry["xmin"], 'latitude': geometry["ymin"]}])
+    gdf = gpd.GeoDataFrame(
+        df,
+        geometry=gpd.points_from_xy(
+            df.longitude,
+            df.latitude
+        ),
+        crs='EPSG:4326'
+    )
+    # TODO Verify the consequences of projecting to an arbitrary CRS
+    #  for sake of buffering.
+    gdf = gdf.to_crs("EPSG:32634")  # A CRS in units of meters
+    gdf.geometry = gdf.geometry.buffer(buffer*1000)  # Convert to meters
+    gdf = gdf.to_crs("EPSG:4326")  # Convert back to EPSG:4326
+    bounds = gdf.bounds
+    # TODO Update values of geometry object
+    geometry["xmin"] = bounds.minx[0]
+    geometry["ymin"] = bounds.miny[0]
+    geometry["xmax"] = bounds.maxx[0]
+    geometry["ymax"] = bounds.maxy[0]
+    return json.dumps(geometry)
+
+
+def _get_geometry_type(geometry):
+    """Get the geometry type from the response object's geometry attribute
+
+    Parameters
+    ----------
+    geometry : str
+        The ESRI geometry object
+
+    Returns
+    -------
+    str : The geometry type
+
+    Notes
+    -----
+    This function determines the geometry type by looking for distinguishing
+    properties of the ESRI geometry object.
+    """
+    geometry = json.loads(geometry)
+    if geometry.get("x") is not None:
+        return "esriGeometryPoint"
+    elif geometry.get("xmin") is not None:
+        return "esriGeometryEnvelope"
+    elif geometry.get("rings") is not None:
+        return "esriGeometryPolygon"
+    else:
+        return None
+
+def _is_point_location(geometry):
+    """Is a geometry a point location? Points are represented as envelopes, but
+    it is useful to know if the geometry is a point location for some internal
+    processes
+
+    Parameters
+    ----------
+    geometry : str
+        The ESRI geometry object
+
+    Returns
+    -------
+    bool : True if the geometry is a point location, False otherwise
+    """
+    if _get_geometry_type(geometry) != "esriGeometryEnvelope":
+        return False
+    geometry = json.loads(geometry)
+    if geometry.get('xmin') == geometry.get('xmax') and \
+            geometry.get('ymin') == geometry.get('ymax'):
+        return True
+    return False
+
+def _polygon_or_envelope_to_points(geometry):
+    """Convert a polygon or envelope to a list of points
+
+    Parameters
+    ----------
+    geometry : str
+        The ESRI geometry object
+
+    Returns
+    -------
+    list : A list of ESRI envelope geometries (as str) representing point locations
+    (i.e. xmin == xmax and ymin == ymax). Note, this is a design decision.
+
+    Notes
+    -----
+    For improving the results from the WTE identify responses. Currently, the
+    identify operation returns the midpoint of the envelope. This function
+    returns the vertices of a polygon or envelope in addition to the centroid.
+    This function could likely be improved.
+
+    Currently, this only operates on the outer ring of a polygon. Inner rings
+    are not considered. A warning is thrown if inner rings are present, because
+    the centroid will be incorrect.
+    """
+    geometry_type = _get_geometry_type(geometry)
+    geometry = json.loads(geometry)
+    # TODO-merge: Create xy series based on whether the geometry is a polygon
+    #  or a envelope.
+    if geometry_type == "esriGeometryPolygon":
+        # Create a GeoSeries with the vertices of the polygon
+        bounds = []
+        for xy_pair in geometry.get("rings")[0]:
+            x, y = xy_pair
+            bounds.append((x, y))
+        # Bump off the last one since it is the same as the first
+        bounds.pop()
+        # TODO Throw a warning when inner ring is present, because the centriod
+        #  will be incorrect.
+    elif geometry_type == "esriGeometryEnvelope":
+        # Create a GeoSeries with the four corners of the envelope
+        bounds = [
+            (geometry.get("xmin"), geometry.get("ymin")),
+            (geometry.get("xmax"), geometry.get("ymin")),
+            (geometry.get("xmax"), geometry.get("ymax")),
+            (geometry.get("xmin"), geometry.get("ymax"))
+        ]
+    # Construct point geometries from the envelope corners
+    res = []
+    for corner in bounds:
+        res.append(
+            json.dumps(
+                {
+                    "xmin": corner[0],
+                    "ymin": corner[1],
+                    "xmax": corner[0],
+                    "ymax": corner[1],
+                    "zmin": geometry.get("zmin"),
+                    "zmax": geometry.get("zmax"),
+                    "spatialReference": geometry.get("spatialReference")
+                }
+            )
+        )
+    # Get the centroid of the geometry
+    shape = gpd.GeoSeries(Polygon(bounds))
+    centroid = shape.centroid
+    # TODO Use one single consistent approach to transferring values to the
+    #  result for simplicity.
+    res.append(
+        json.dumps(
+            {
+                "xmin": centroid.x[0],
+                "ymin": centroid.y[0],
+                "xmax": centroid.x[0],
+                "ymax": centroid.y[0],
+                "zmin": geometry.get("zmin"),
+                "zmax": geometry.get("zmax"),
+                "spatialReference": geometry.get("spatialReference")
+            }
+        )
+    )
+    return res
+
+
 def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
     """Convert geographic coverages of EML to WTE ecosystems and write to
     json file
@@ -1095,6 +1273,145 @@ def wte_json_to_df(json_dir):
     return df
 
 
+def json_to_df(json_dir):
+    """Combine json files into a single long dataframe for analysis
+
+    Parameters
+    ----------
+    json_dir : str
+        Path to directory containing json files
+
+    Returns
+    -------
+    df : pandas.DataFrame
+        A dataframe of geographic coverages and corresponding ecosystems
+
+    Notes
+    -----
+    We construct a wide data frame with one row per ecosystem and then melt it
+    into a long data frame. This is done to facilitate analysis.
+    """
+    files = glob.glob(json_dir + "*.json")
+    if not files:
+        raise FileNotFoundError("No json files found")
+    res = []
+    # Initialize the fields of the output dictionary from the
+    # attributes of the ecosystem object. Constructing this dictionary
+    # manually is probably less work and more understandable than
+    # using a coded approach.
+    #
+    # Note this approach has ramifications for how the ecosystems of
+    # geometries are interpreted. For example areal geometries will
+    # include the unique attributes of all ecosystems within the area,
+    # whereas point geometries will only include the attributes of the
+    # ecosystem at the point. Furthermore, this is not how the
+    # ecosystem attribute of areal geometries are presented in the
+    # ecosystem attributes data object, where they are presented as
+    # grouped sets of attributes as defined by the map server data
+    # sources.
+    boilerplate_output = {
+        "dataset": None,
+        "description": None,
+        "geometry_type": None,
+        "comments": None,
+        "source": None,
+        "Climate_Re": None,  # WTE attributes ...
+        "Landcover": None,
+        "Landforms": None,
+        "Slope": None,  # ECU attributes ...
+        "Sinuosity": None,
+        "Erodibility": None,
+        "Temperature and Moisture Regime": None,
+        "River Discharge": None,
+        "Wave Height": None,
+        "Tidal Range": None,
+        "Marine Physical Environment": None,
+        "Turbidity": None,
+        "Chlorophyll": None,
+        "OceanName": None,  # EMU attributes ...
+        "Depth": None,
+        "Temperature": None,
+        "Salinity": None,
+        "Dissolved Oxygen": None,
+        "Nitrate": None,
+        "Phosphate": None,
+        "Silicate": None
+    }
+    for file in files:
+        with open(file, "r", encoding="utf-8") as f:
+            # Load the results of the json file into a dictionary for parsing
+            j = json.load(f)
+            dataset = j.get("dataset")
+            location = j.get("location")
+            if len(location) == 0:
+                output = dict(boilerplate_output)  # Create a copy of the boilerplate
+                output["dataset"] = dataset
+                res.append(output)
+            else:
+                for loc in location:
+                    description = loc.get("description")
+                    geometry_type = loc.get("geometry_type")
+                    comments = loc.get("comments")
+                    # Use list comprehension to convert None values to empty
+                    #  strings to handle an unexpected edge case.
+                    comments = ["" if c is None else c for c in comments]
+                    comments = " ".join(comments)
+                    ecosystem = loc.get("ecosystem")
+                    if len(ecosystem) == 0:
+                        output = dict(boilerplate_output)  # Create a copy of the boilerplate
+                        output["dataset"] = dataset
+                        output["description"] = description
+                        output["geometry_type"] = geometry_type
+                        output["comments"] = comments
+                        res.append(output)
+                    else:
+                        for eco in ecosystem:
+                            source = eco.get("source")
+                            output = dict(boilerplate_output)  # Create a copy of the boilerplate
+                            output["dataset"] = dataset
+                            output["description"] = description
+                            output["geometry_type"] = geometry_type
+                            output["comments"] = comments
+                            output["source"] = source
+                            res.append(output)
+                            attributes = eco.get("attributes")
+                            # Iterate over the resolved ecosystem's attributes
+                            # and add them to the output dictionary if they are
+                            # present in the boilerplate dictionary.
+                            for attribute in attributes:
+                                if attribute in output.keys():
+                                    output[attribute] = attributes[attribute]["label"]
+                            res.append(output)
+    # Convert to dataframe
+    df = pd.DataFrame(res)
+    # Sort for readability
+    df[["scope", "identifier"]] = df["dataset"].str.split(".", n=1, expand=True)
+    df["identifier"] = pd.to_numeric(df["identifier"])
+    df = df.sort_values(by=["scope", "identifier"])
+    df = df.drop(columns=["scope", "identifier"])
+    # Rename columns for readability
+    df = df.rename(
+        columns={
+            "dataset": "package_id",
+            "description": "location_description",
+            "source": "ecosystem_type"
+        }
+    )
+    # Convert acronyms (of ecosystem types) to more descriptive names
+    df["ecosystem_type"] = df["ecosystem_type"].replace(
+        {
+            "wte": "Terrestrial",
+            "ecu": "Coastal",
+            "emu": "Marine"
+        }
+    )
+    return df
+
+
+def get_number_of_unique_ecosystems():
+    return None
+
+
 def summarize_wte_results(wte_df):
     """Summarize WTE results
 
@@ -1137,187 +1454,6 @@ def summarize_wte_results(wte_df):
     return res
 
 
-def convert_point_to_envelope(geometry, buffer=None):
-    """Convert an esriGeometryPoint to an esriGeometryEnvelope
-
-    Parameters
-    ----------
-    geometry : dict
-        An esriGeometryEnvelope representing a point
-    buffer : float
-        The distance in kilometers to buffer the point. The buffer is a radius
-        around the point. The default is 0.5.
-
-    Returns
-    -------
-    str : ESRI JSON envelope geometry
-
-    Notes
-    -----
-    This function assumes the coordinate reference system of the input
-    geometry is EPSG:4326.
-    """
-    if not _is_point_location(geometry) or buffer is None:
-        return geometry
-    geometry = json.loads(geometry)
-    df = pd.DataFrame([{'longitude': geometry["xmin"], 'latitude': geometry["ymin"]}])
-    gdf = gpd.GeoDataFrame(
-        df,
-        geometry=gpd.points_from_xy(
-            df.longitude,
-            df.latitude
-        ),
-        crs='EPSG:4326'
-    )
-    # TODO Verify the consequences of projecting to an arbitrary CRS
-    #  for sake of buffering.
-    gdf = gdf.to_crs("EPSG:32634")  # A CRS in units of meters
-    gdf.geometry = gdf.geometry.buffer(buffer*1000)  # Convert to meters
-    gdf = gdf.to_crs("EPSG:4326")  # Convert back to EPSG:4326
-    bounds = gdf.bounds
-    # TODO Update values of geometry object
-    geometry["xmin"] = bounds.minx[0]
-    geometry["ymin"] = bounds.miny[0]
-    geometry["xmax"] = bounds.maxx[0]
-    geometry["ymax"] = bounds.maxy[0]
-    return json.dumps(geometry)
-
-
-def _get_geometry_type(geometry):
-    """Get the geometry type from the response object's geometry attribute
-
-    Parameters
-    ----------
-    geometry : str
-        The ESRI geometry object
-
-    Returns
-    -------
-    str : The geometry type
-
-    Notes
-    -----
-    This function determines the geometry type by looking for distinguishing
-    properties of the ESRI geometry object.
-    """
-    geometry = json.loads(geometry)
-    if geometry.get("x") is not None:
-        return "esriGeometryPoint"
-    elif geometry.get("xmin") is not None:
-        return "esriGeometryEnvelope"
-    elif geometry.get("rings") is not None:
-        return "esriGeometryPolygon"
-    else:
-        return None
-
-def _is_point_location(geometry):
-    """Is a geometry a point location? Points are represented as envelopes, but
-    it is useful to know if the geometry is a point location for some internal
-    processes
-
-    Parameters
-    ----------
-    geometry : str
-        The ESRI geometry object
-
-    Returns
-    -------
-    bool : True if the geometry is a point location, False otherwise
-    """
-    if _get_geometry_type(geometry) != "esriGeometryEnvelope":
-        return False
-    geometry = json.loads(geometry)
-    if geometry.get('xmin') == geometry.get('xmax') and \
-            geometry.get('ymin') == geometry.get('ymax'):
-        return True
-    return False
-
-def _polygon_or_envelope_to_points(geometry):
-    """Convert a polygon or envelope to a list of points
-
-    Parameters
-    ----------
-    geometry : str
-        The ESRI geometry object
-
-    Returns
-    -------
-    list : A list of ESRI envelope geometries (as str) representing point locations
-    (i.e. xmin == xmax and ymin == ymax). Note, this is a design decision.
-
-    Notes
-    -----
-    For improving the results from the WTE identify responses. Currently, the
-    identify operation returns the midpoint of the envelope. This function
-    returns the vertices of a polygon or envelope in addition to the centroid.
-    This function could likely be improved.
-
-    Currently, this only operates on the outer ring of a polygon. Inner rings
-    are not considered. A warning is thrown if inner rings are present, because
-    the centroid will be incorrect.
-    """
-    geometry_type = _get_geometry_type(geometry)
-    geometry = json.loads(geometry)
-    # TODO-merge: Create xy series based on whether the geometry is a polygon
-    #  or a envelope.
-    if geometry_type == "esriGeometryPolygon":
-        # Create a GeoSeries with the vertices of the polygon
-        bounds = []
-        for xy_pair in geometry.get("rings")[0]:
-            x, y = xy_pair
-            bounds.append((x, y))
-        # Bump off the last one since it is the same as the first
-        bounds.pop()
-        # TODO Throw a warning when inner ring is present, because the centriod
-        #  will be incorrect.
-    elif geometry_type == "esriGeometryEnvelope":
-        # Create a GeoSeries with the four corners of the envelope
-        bounds = [
-            (geometry.get("xmin"), geometry.get("ymin")),
-            (geometry.get("xmax"), geometry.get("ymin")),
-            (geometry.get("xmax"), geometry.get("ymax")),
-            (geometry.get("xmin"), geometry.get("ymax"))
-        ]
-    # Construct point geometries from the envelope corners
-    res = []
-    for corner in bounds:
-        res.append(
-            json.dumps(
-                {
-                    "xmin": corner[0],
-                    "ymin": corner[1],
-                    "xmax": corner[0],
-                    "ymax": corner[1],
-                    "zmin": geometry.get("zmin"),
-                    "zmax": geometry.get("zmax"),
-                    "spatialReference": geometry.get("spatialReference")
-                }
-            )
-        )
-    # Get the centroid of the geometry
-    shape = gpd.GeoSeries(Polygon(bounds))
-    centroid = shape.centroid
-    # TODO Use one single consistent approach to transferring values to the
-    #  result for simplicity.
-    res.append(
-        json.dumps(
-            {
-                "xmin": centroid.x[0],
-                "ymin": centroid.y[0],
-                "xmax": centroid.x[0],
-                "ymax": centroid.y[0],
-                "zmin": geometry.get("zmin"),
-                "zmax": geometry.get("zmax"),
-                "spatialReference": geometry.get("spatialReference")
-            }
-        )
-    )
-    return res
-
-
-
-
-
 if __name__ == "__main__":
 
     print("42")
@@ -1337,14 +1473,14 @@ if __name__ == "__main__":
     # )
 
     # Combine json files into a single dataframe
-    df = wte_json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/")
+    df = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/")
     print("42")
 
-    # Write df to tsv
-    import csv
-    output_dir = "/Users/csmith/Data/edi/"
-    df.to_csv(output_dir + "globalelu.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
+    # # Write df to tsv
+    # import csv
+    # output_dir = "/Users/csmith/Data/edi/"
+    # df.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
 
-    # # Summarize WTE results
+    # Summarize WTE results
     # res = summarize_wte_results(df)
     # print(res)
