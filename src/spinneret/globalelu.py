@@ -1169,117 +1169,17 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             json.dump(base.data, f)
 
 
-def wte_json_to_df(json_dir):
-    """Combine WTE json files into a single long dataframe
 
-    Parameters
-    ----------
-    json_dir : str
-        Path to directory containing json files
-
-    Returns
-    -------
-    df : pandas.DataFrame
-        A dataframe of the WTE ecosystems
-    """
-    files = glob.glob(json_dir + "*.json")
-    if not files:
-        raise FileNotFoundError("No json files found")
-    res = []
-    for file in files:
-        with open(file, "r", encoding="utf-8") as f:
-            # output = {
-            #     "dataset": None,
-            #     "description": None,
-            #     "geometry_type": None,
-            #     "comments": None,
-            #     "source": None,
-            #     "attributes": None
-            # }
-            j = json.load(f)
-            dataset = j.get("dataset")
-            location = j.get("location")
-            if len(location) == 0:
-                res.append(
-                    {
-                        "dataset": dataset,
-                        "description": None,
-                        "geometry_type": None,
-                        "comments": None,
-                        "source": None,
-                        "attributes": None
-                    }
-                )
-            else:
-                for loc in location:
-                    description = loc.get("description")
-                    geometry_type = loc.get("geometry_type")
-                    comments = loc.get("comments")
-                    # FIXME: Use list comprehension to convert None values to empty
-                    #  strings to handle an unexpected edge case.
-                    comments = ["" if c is None else c for c in comments]
-                    comments = " ".join(comments)
-                    ecosystem = loc.get("ecosystem")
-                    if len(ecosystem) == 0:
-                        res.append(
-                            {
-                                "dataset": dataset,
-                                "description": description,
-                                "geometry_type": geometry_type,
-                                "comments": comments,
-                                "source": None,
-                                "attributes": None
-                            }
-                        )
-                    else:
-                        for eco in ecosystem:
-                            source = eco.get("source")
-                            descriptor = _json_extract(eco, "label")
-                            attributes = descriptor[-1]
-                            res.append(
-                                {
-                                    "dataset": dataset,
-                                    "description": description,
-                                    "geometry_type": geometry_type,
-                                    "comments": comments,
-                                    "source": source,
-                                    "attributes": attributes
-                                }
-                            )
-    # Convert to dataframe
-    df = pd.DataFrame(res)
-    # Sort for readability
-    df[["scope", "identifier"]] = df["dataset"].str.split(".", n=1, expand=True)
-    df["identifier"] = pd.to_numeric(df["identifier"])
-    df = df.sort_values(by=["scope", "identifier"])
-    df = df.drop(columns=["scope", "identifier"])
-    # Rename columns for readability
-    df = df.rename(
-        columns={
-            "dataset": "package_id",
-            "description": "location_description",
-            "source": "ecosystem_type",
-            "attributes": "ecosystem_attributes"
-        }
-    )
-    # Convert acronyms (of ecosystem types) to more descriptive names
-    df["ecosystem_type"] = df["ecosystem_type"].replace(
-        {
-            "wte": "Terrestrial",
-            "ecu": "Coastal",
-            "emu": "Marine"
-        }
-    )
-    return df
-
-
-def json_to_df(json_dir):
+def json_to_df(json_dir, format="wide"):
     """Combine json files into a single long dataframe for analysis
 
     Parameters
     ----------
     json_dir : str
         Path to directory containing json files
+    format : str
+        Format of output dataframe. Options are "wide" and "long". Default is
+        "wide".
 
     Returns
     -------
@@ -1405,7 +1305,37 @@ def json_to_df(json_dir):
             "emu": "Marine"
         }
     )
+    if format == "wide":
+        return df
+    # Convert df to long format
+    df = pd.melt(
+        df,
+        id_vars=[
+            "package_id",
+            "location_description",
+            "geometry_type",
+            "comments",
+            "ecosystem_type"
+        ],
+        var_name="ecosystem_attribute",
+        value_name="value"
+    )
+    # Remove all rows where the ecosystem is None
+    df = df.dropna(subset=["value"])
+    # Drop duplicate rows and values of "n/a"
+    df = df.drop_duplicates()
+    df = df[df["value"] != "n/a"]
+    # Sort by package_id and attribute
+    df = df.sort_values(by=['package_id', 'location_description', 'geometry_type', 'comments',
+       'ecosystem_type', 'ecosystem_attribute', 'value'])
+    # Sort for readability. This is the same as the above sort but is done
+    # again after a series of operations that may have changed the order.
+    df[["scope", "identifier"]] = df["package_id"].str.split(".", n=1, expand=True)
+    df["identifier"] = pd.to_numeric(df["identifier"])
+    df = df.sort_values(by=["scope", "identifier"])
+    df = df.drop(columns=["scope", "identifier"])
     return df
+
 
 
 def get_number_of_unique_ecosystems():
@@ -1473,7 +1403,7 @@ if __name__ == "__main__":
     # )
 
     # Combine json files into a single dataframe
-    df = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/")
+    df = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="long")
     print("42")
 
     # # Write df to tsv

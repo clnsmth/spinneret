@@ -509,46 +509,6 @@ def test_query(geocov):
     assert r.has_ecosystem('emu') is False
 
 
-# def test_wte_json_to_df():
-#     """Test the wte_json_to_df() function.
-#
-#     The wte_json_to_df() function should convert a directory of json
-#     files to a pandas DataFrame. The DataFrame should have the expected
-#     columns and should not contain any list values.
-#     """
-#     df = globalelu.wte_json_to_df(json_dir="src/spinneret/data/json/")
-#     assert df is not None
-#     assert len(df) > 0
-#     assert "file" in df.columns
-#     for col in ["Landforms", "Landcover", "Climate_Region"]:
-#         assert col in df.columns
-#         assert df[col].apply(lambda x: isinstance(x, list)).sum() == 0
-
-
-# def test_summarize_wte_results():
-#     """Test the summarize_wte_results() function.
-#
-#     The summarize_wte_results() function should return a dictionary of
-#     summary statistics for the results. The dictionary should contain the
-#     expected keys.
-#     """
-#     df = globalelu.wte_json_to_df(json_dir="src/spinneret/data/json/")
-#     res = globalelu.summarize_wte_results(wte_df=df)
-#     assert isinstance(res, dict)
-#     expected_keys = {
-#         "Successful matches (percent)",
-#         "Terrestrial ecosystems (number)",
-#         "Aquatic ecosystems (number)",
-#         "Unsupported geometries (number)",
-#         "Out of bounds geometries (number)",
-#         "No geographic coverage (number)",
-#         "Landforms",
-#         "Landcover",
-#         "Climate_Region",
-#     }
-#     assert set(res.keys()) == expected_keys
-
-
 def test_get_attributes(geocov):
     """Test the get_attributes() function.
 
