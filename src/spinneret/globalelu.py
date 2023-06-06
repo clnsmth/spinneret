@@ -1293,7 +1293,7 @@ def json_to_df(json_dir, format="wide"):
     df = df.rename(
         columns={
             "dataset": "package_id",
-            "description": "location_description",
+            "description": "geographic_coverage_description",
             "source": "ecosystem_type"
         }
     )
@@ -1312,7 +1312,7 @@ def json_to_df(json_dir, format="wide"):
         df,
         id_vars=[
             "package_id",
-            "location_description",
+            "geographic_coverage_description",
             "geometry_type",
             "comments",
             "ecosystem_type"
@@ -1326,7 +1326,7 @@ def json_to_df(json_dir, format="wide"):
     df = df.drop_duplicates()
     df = df[df["value"] != "n/a"]
     # Sort by package_id and attribute
-    df = df.sort_values(by=['package_id', 'location_description', 'geometry_type', 'comments',
+    df = df.sort_values(by=['package_id', 'geographic_coverage_description', 'geometry_type', 'comments',
        'ecosystem_type', 'ecosystem_attribute', 'value'])
     # Sort for readability. This is the same as the above sort but is done
     # again after a series of operations that may have changed the order.
@@ -1406,10 +1406,10 @@ if __name__ == "__main__":
     df = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="long")
     print("42")
 
-    # # Write df to tsv
-    # import csv
-    # output_dir = "/Users/csmith/Data/edi/"
-    # df.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
+    # Write df to tsv
+    import csv
+    output_dir = "/Users/csmith/Data/edi/"
+    df.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
 
     # Summarize WTE results
     # res = summarize_wte_results(df)
