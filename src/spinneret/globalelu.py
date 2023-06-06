@@ -1188,8 +1188,13 @@ def json_to_df(json_dir, format="wide"):
 
     Notes
     -----
-    We construct a wide data frame with one row per ecosystem and then melt it
-    into a long data frame. This is done to facilitate analysis.
+    The results of this function modify the native representation of ecosystems
+    returned by map servers from grouped sets of attributes to grouped sets of
+    unique attributes, and thus changes the semantics of how the map server
+    authors intended the data to be interpreted. Specifically, areal geometries
+    will include the unique attributes of all ecosystems within the area,
+    whereas point geometries will only include the attributes of the ecosystem
+    at the point.
     """
     files = glob.glob(json_dir + "*.json")
     if not files:
@@ -1199,16 +1204,6 @@ def json_to_df(json_dir, format="wide"):
     # attributes of the ecosystem object. Constructing this dictionary
     # manually is probably less work and more understandable than
     # using a coded approach.
-    #
-    # Note this approach has ramifications for how the ecosystems of
-    # geometries are interpreted. For example areal geometries will
-    # include the unique attributes of all ecosystems within the area,
-    # whereas point geometries will only include the attributes of the
-    # ecosystem at the point. Furthermore, this is not how the
-    # ecosystem attribute of areal geometries are presented in the
-    # ecosystem attributes data object, where they are presented as
-    # grouped sets of attributes as defined by the map server data
-    # sources.
     boilerplate_output = {
         "dataset": None,
         "description": None,
