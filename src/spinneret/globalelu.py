@@ -8,6 +8,7 @@ import geopandas as gpd
 from shapely.geometry import Polygon
 from spinneret.utilities import user_agent
 from spinneret.eml import get_geographic_coverage
+import matplotlib.pyplot as plt
 
 
 def _json_extract(obj, key):
@@ -1316,7 +1317,7 @@ def json_to_df(json_dir, format="wide"):
         value_name="value"
     )
     # Remove all rows where the ecosystem is None
-    df = df.dropna(subset=["value"])
+    # df = df.dropna(subset=["value"])
     # Drop duplicate rows and values of "n/a"
     df = df.drop_duplicates()
     df = df[df["value"] != "n/a"]
@@ -1333,7 +1334,131 @@ def json_to_df(json_dir, format="wide"):
 
 
 
-def get_number_of_unique_ecosystems():
+def get_number_of_unique_ecosystems(df_wide):
+    """Get the number of unique ecosystems for each ecosystem type
+
+    Parameters
+    ----------
+    df_wide : pandas.DataFrame
+        A dataframe created by `json_to_df` in wide format
+
+    Returns
+    -------
+    res : dict
+        A dictionary of the number of unique ecosystems for each ecosystem type
+    """
+    # Drop the columns that are not ecosystem attributes except for ecosystem
+    # type, which is needed to count the number of unique ecosystems for each
+    # ecosystem type.
+    df = df_wide.drop(columns=["package_id", "geographic_coverage_description", "geometry_type", "comments"])
+    # Drop duplicate rows
+    df = df.drop_duplicates()
+    # Drop rows where the ecosystem type is None
+    df = df.dropna(subset=["ecosystem_type"])
+    # Get the total number of unique ecosystems and for each ecosystem type
+    res = {}
+    res["Total"] = df.shape[0]
+    for eco_type in df["ecosystem_type"].unique():
+        res[eco_type] = df[df["ecosystem_type"] == eco_type].shape[0]
+    return res
+
+
+def get_number_of_unique_geographic_coverages(df_wide):
+    """Get the number of unique geographic coverages
+
+    Parameters
+    ----------
+    df_wide : pandas.DataFrame
+        A dataframe created by `json_to_df` in wide format
+
+    Returns
+    -------
+    res : int
+        The number of unique geographic coverages
+    """
+    # Create a new data frame with the columns package_id,
+    # geographic_coverage_description, and geometry_type. These form a
+    # composite key of unique ecosystems.
+    df = df_wide[["package_id", "geographic_coverage_description", "geometry_type"]]
+    # Drop duplicate rows
+    df = df.drop_duplicates()
+    # Get the number of unique geographic coverages
+    res = df.shape[0]
+    return res
+
+
+def get_percent_of_geometries_with_no_ecosystem(df_wide):
+    """Get the percent of geometries with no ecosystem
+
+    Parameters
+    ----------
+    df_wide : pandas.DataFrame
+        A dataframe created by `json_to_df` in wide format
+
+    Returns
+    -------
+    res : float
+        The percent of geometries with no ecosystem
+    """
+    # Drop the columns that are not ecosystem attributes or geometry identifiers
+    # since we only want to count the number of geometries with no ecosystem.
+    df = df_wide.drop(columns=['geometry_type', 'comments', 'ecosystem_type'])
+    # Get number of rows where package_id and geographic_coverage_description
+    # are the same.
+    total_number_of_unique_geometries = df[df.duplicated(subset=['package_id', 'geographic_coverage_description'])].shape[0]
+    # Remove rows from df where all ecosystem attribute columns do not have a
+    # value of None. The remaining rows represent geometries that have no
+    # ecosystem for some reason.
+    ecosystem_attribute_columns = [
+        'Climate_Re',
+        'Landcover', 'Landforms', 'Slope', 'Sinuosity', 'Erodibility',
+        'Temperature and Moisture Regime', 'River Discharge', 'Wave Height',
+        'Tidal Range', 'Marine Physical Environment', 'Turbidity',
+        'Chlorophyll', 'OceanName', 'Depth', 'Temperature', 'Salinity',
+        'Dissolved Oxygen', 'Nitrate', 'Phosphate', 'Silicate'
+    ]
+    df = df[df[ecosystem_attribute_columns].isnull().all(axis=1)]
+    # Drop duplicate rows
+    df = df.drop_duplicates()
+    # Get the number of rows in df, which is the number of geometries with no
+    # ecosystem
+    number_of_geometries_with_no_ecosystem = df.shape[0]
+    # Get the percent of geometries with no ecosystem
+    percent_of_geometries_with_no_ecosystem = number_of_geometries_with_no_ecosystem / total_number_of_unique_geometries * 100
+    return percent_of_geometries_with_no_ecosystem
+
+
+def plot_wide_data(df_wide):
+    """Plot the proportion of ecosystem types across datasets
+
+    Parameters
+    ----------
+    df_wide : pandas.DataFrame
+        A dataframe created by `json_to_df` in wide format
+
+    Returns
+    -------
+    None
+    """
+
+    # Count the number of unique ecosystem_type values for each unique
+    # package_id.
+    df = df_wide.groupby(['package_id', 'ecosystem_type']).size().reset_index(name='Count')
+    # Create a histogram of the counts for each ecosystem_type
+    df.hist(column='Count', by='ecosystem_type', bins=20, figsize=(10, 10))
+    plt.show()
+    return None
+
+
+def plot_long_data(df_long):
+    # Remove rows that contain None in any column to facilitate plotting.
+    df = df_long.dropna()
+    # Create a bar chart for Terrestrial ecosystem types, including ecosystem attribute
+    # and value
+    df_terrestrial = df[df['ecosystem_type'].isin(['Terrestrial'])]
+    df_terrestrial = df_terrestrial.groupby(['ecosystem_attribute', 'value']).size().reset_index(name='Count')
+    df_terrestrial.plot.bar(x='ecosystem_attribute', y='Count', rot=90, figsize=(10, 10))
+    plt.show()
     return None
 
 
@@ -1398,14 +1523,19 @@ if __name__ == "__main__":
     # )
 
     # Combine json files into a single dataframe
-    df = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="long")
-    print("42")
+    df_long = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="long")
+    df_wide = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="wide")
 
-    # Write df to tsv
-    import csv
-    output_dir = "/Users/csmith/Data/edi/"
-    df.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
+    # # Write df to tsv
+    # import csv
+    # output_dir = "/Users/csmith/Data/edi/"
+    # df_long.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
 
     # Summarize WTE results
-    # res = summarize_wte_results(df)
-    # print(res)
+    unique_ecosystems_by_type = get_number_of_unique_ecosystems(df_wide)
+    no_ecosystem = get_percent_of_geometries_with_no_ecosystem(df_wide)
+    number_of_unique_geographic_coverages = get_number_of_unique_geographic_coverages(df_wide)
+    # PLot
+    # plot_wide_data(df_wide)
+    plot_long_data(df_long)
+    print("42")
