@@ -10,6 +10,13 @@ from spinneret.utilities import user_agent
 from spinneret.eml import get_geographic_coverage
 import matplotlib.pyplot as plt
 
+import numpy as np
+import matplotlib.pyplot as plt
+
+from matplotlib import lines
+from matplotlib import patches
+from matplotlib.patheffects import withStroke
+
 
 def _json_extract(obj, key):
     """Recursively fetch values from nested JSON.
@@ -1456,36 +1463,103 @@ def plot_long_data(df_long):
     # Drop geographic_coverage_description, comments, and geometry_type
     # columns since they are not used in this analysis.
     df = df.drop(columns=['geographic_coverage_description', 'comments', 'geometry_type'])
-
-    # Subset the data frame to only include the ecosystem_type and package_id
-    # columns.
-    df = df[['ecosystem_type', 'package_id']]
-    # Drop duplicate rows
-    df = df.drop_duplicates()
-    # Count the number of unique ecosystem_type values for each unique
-    # package_id.
-    df = df.groupby(['ecosystem_type']).size().reset_index(name='Count')
-    # Create a bar plot of the counts for each ecosystem_type
-    df.plot.bar(x='ecosystem_type', y='Count', rot=0, figsize=(10, 10))
-    # Add a title to the plot
-    plt.title("Number of Data Packages per Ecosystem Type")
-    # Add label to the y-axis
-    plt.ylabel("Number of Data Packages")
-    # Add label to the x-axis
-    plt.xlabel("Ecosystem Type")
-    plt.show()
-
-    # Remove rows that contain None in any column to facilitate plotting.
-    df = df_long.dropna()
-    # Drop geographic_coverage_description, comments, and geometry_type
-    # columns since they are not used in this analysis.
-    df = df.drop(columns=['geographic_coverage_description', 'comments', 'geometry_type'])
     # Drop duplicate rows
     df = df.drop_duplicates()
     # Group by ecosystem_type, ecosystem_attribute, and value and count the
     # number of unique package_id values for each unique combination of
     # ecosystem_type, ecosystem_attribute, and value.
     df = df.groupby(['ecosystem_type', 'ecosystem_attribute', 'value']).size().reset_index(name='Count')
+
+    # Create a series of horizontal bar plots for each Coastal ecosystem type,
+    # where each plot is grouped by the ecosystem_attribute column.
+    for ecosystem_type in df['ecosystem_type'].unique():
+        # Subset the data frame to only include rows that contain the current
+        # ecosystem_type value.
+        df_subset = df[df['ecosystem_type'] == ecosystem_type]
+        for ecosystem_attribute in df_subset['ecosystem_attribute'].unique():
+            # Subset the data frame to only include rows that contain the
+            # current ecosystem_attribute value.
+            df_subset2 = df_subset[df_subset['ecosystem_attribute'] == ecosystem_attribute]
+            # Sort the rows by the value column in descending order.
+            df_subset2 = df_subset2.sort_values(by=['Count'], ascending=True)
+
+            # Start example bar chart code:
+            counts = df_subset2['Count'].values.tolist()
+            names = df_subset2['value'].values.tolist()
+            # The positions for the bars
+            # This allows us to determine exactly where each bar is located
+            y = [i * 0.9 for i in range(len(names))]
+
+            # The colors
+            BLUE = "#076fa2"
+            RED = "#E3120B"
+            BLACK = "#202020"
+            GREY = "#a2a2a2"
+
+            # Create the basic bar chart
+            fig, ax = plt.subplots(figsize=(12, 7))
+            ax.barh(y, counts, height=0.55, align="edge", color=BLUE);
+
+            # Customize the layout
+            # ax.xaxis.set_ticks([i * 10 for i in range(0, 12)])  # TODO this is the original code
+            # ax.xaxis.set_ticklabels([i * 5 for i in range(0, 12)], size=16, fontweight=100)
+            ax.xaxis.set_ticks([i for i in range(0, max(counts), 10)])  # TODO this is the modified code
+            ax.xaxis.set_ticklabels([i for i in range(0, max(counts), 10)], size=16, fontweight=100)
+            ax.xaxis.set_tick_params(labelbottom=False, labeltop=True,
+                                     length=0)
+            # ax.set_xlim((0, 55.5))  # TODO this is the original code
+            ax.set_xlim((0, max(counts)+10))  # TODO this is the modified code
+            ax.set_ylim((0, len(names) * 0.9 - 0.2))
+            # Set whether axis ticks and gridlines are above or below most artists.
+            ax.set_axisbelow(True)
+            ax.grid(axis="x", color="#A8BAC4", lw=1.2)
+            ax.spines["right"].set_visible(False)
+            ax.spines["top"].set_visible(False)
+            ax.spines["bottom"].set_visible(False)
+            ax.spines["left"].set_lw(1.5)
+            # This capstyle determines the lines don't go beyond the limit we specified
+            # see: https://matplotlib.org/stable/api/_enums_api.html?highlight=capstyle#matplotlib._enums.CapStyle
+            ax.spines["left"].set_capstyle("butt")
+            # Hide y labels
+            ax.yaxis.set_visible(False)
+            fig
+
+            # Add the labels
+            PAD = 0.3
+            for name, count, y_pos in zip(names, counts, y):
+                x = 0
+                color = "lightgrey"
+                path_effects = None
+                if count < 8:
+                    x = count
+                    color = BLUE
+                    path_effects = [
+                        withStroke(linewidth=6, foreground="white")]
+
+                ax.text(
+                    x + PAD, y_pos + 0.5 / 2, name,
+                    color=color, fontsize=18,
+                    va="center",
+                    path_effects=path_effects
+                )
+            fig
+
+            # Add annotations and final tweaks
+            # Make room on top and bottom
+            # Note there's no room on the left and right sides
+            fig.subplots_adjust(left=0.005, right=1, top=0.8, bottom=0.1)
+            # Add title
+            ttl = "Number of Data Packages for {} - {}".format(ecosystem_type,
+                                                         ecosystem_attribute)
+            fig.text(
+                0, 0.925, ttl,
+                fontsize=22, fontweight="bold"
+            )
+            # Set facecolor, useful when saving as .png
+            fig.set_facecolor("white")
+            fig
+
+            fig.savefig(ttl + ".png", dpi=300)
 
 
     return None
