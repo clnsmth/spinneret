@@ -1453,12 +1453,41 @@ def plot_wide_data(df_wide):
 def plot_long_data(df_long):
     # Remove rows that contain None in any column to facilitate plotting.
     df = df_long.dropna()
-    # Create a bar chart for Terrestrial ecosystem types, including ecosystem attribute
-    # and value
-    df_terrestrial = df[df['ecosystem_type'].isin(['Terrestrial'])]
-    df_terrestrial = df_terrestrial.groupby(['ecosystem_attribute', 'value']).size().reset_index(name='Count')
-    df_terrestrial.plot.bar(x='ecosystem_attribute', y='Count', rot=90, figsize=(10, 10))
+    # Drop geographic_coverage_description, comments, and geometry_type
+    # columns since they are not used in this analysis.
+    df = df.drop(columns=['geographic_coverage_description', 'comments', 'geometry_type'])
+
+    # Subset the data frame to only include the ecosystem_type and package_id
+    # columns.
+    df = df[['ecosystem_type', 'package_id']]
+    # Drop duplicate rows
+    df = df.drop_duplicates()
+    # Count the number of unique ecosystem_type values for each unique
+    # package_id.
+    df = df.groupby(['ecosystem_type']).size().reset_index(name='Count')
+    # Create a bar plot of the counts for each ecosystem_type
+    df.plot.bar(x='ecosystem_type', y='Count', rot=0, figsize=(10, 10))
+    # Add a title to the plot
+    plt.title("Number of Data Packages per Ecosystem Type")
+    # Add label to the y-axis
+    plt.ylabel("Number of Data Packages")
+    # Add label to the x-axis
+    plt.xlabel("Ecosystem Type")
     plt.show()
+
+    # Remove rows that contain None in any column to facilitate plotting.
+    df = df_long.dropna()
+    # Drop geographic_coverage_description, comments, and geometry_type
+    # columns since they are not used in this analysis.
+    df = df.drop(columns=['geographic_coverage_description', 'comments', 'geometry_type'])
+    # Drop duplicate rows
+    df = df.drop_duplicates()
+    # Group by ecosystem_type, ecosystem_attribute, and value and count the
+    # number of unique package_id values for each unique combination of
+    # ecosystem_type, ecosystem_attribute, and value.
+    df = df.groupby(['ecosystem_type', 'ecosystem_attribute', 'value']).size().reset_index(name='Count')
+
+
     return None
 
 
