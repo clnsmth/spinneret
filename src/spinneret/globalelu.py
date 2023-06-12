@@ -1179,7 +1179,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
 
 
 def json_to_df(json_dir, format="wide"):
-    """Combine json files into a single long dataframe for analysis
+    """Combine json files into a single dataframe
 
     Parameters
     ----------
@@ -1192,17 +1192,17 @@ def json_to_df(json_dir, format="wide"):
     Returns
     -------
     df : pandas.DataFrame
-        A dataframe of geographic coverages and corresponding ecosystems
+        A dataframe of geographic coverages and select ecosystem attributes.
 
     Notes
     -----
     The results of this function modify the native representation of ecosystems
     returned by map servers from grouped sets of attributes to grouped sets of
     unique attributes, and thus changes the semantics of how the map server
-    authors intended the data to be interpreted. Specifically, areal geometries
-    will include the unique attributes of all ecosystems within the area,
-    whereas point geometries will only include the attributes of the ecosystem
-    at the point.
+    authors intended the data to be interpreted. Specifically, areal geometries,
+    returned by this function, include the unique attributes of all ecosystems
+    within the area, whereas point geometries will only include the attributes
+    of the ecosystem at the point.
     """
     files = glob.glob(json_dir + "*.json")
     if not files:
@@ -1240,37 +1240,44 @@ def json_to_df(json_dir, format="wide"):
         "Phosphate": None,
         "Silicate": None
     }
+    # Iterate over the json files, parse the contents into a dictionary, and
+    # append the results to the res list for later conversion to a dataframe.
     for file in files:
         with open(file, "r", encoding="utf-8") as f:
-            # Load the results of the json file into a dictionary for parsing
             j = json.load(f)
             dataset = j.get("dataset")
             location = j.get("location")
-            if len(location) == 0:
-                output = dict(boilerplate_output)  # Create a copy of the boilerplate
+            if len(location) == 0:  # No locations were found. Append and continue.
+                output = dict(boilerplate_output)  # Create a copy of the boilerplate and begin populating it
+                # Note, in this function, values for the output dictionary are
+                # stored as variables, which are added to the dictionary right
+                # before it is appended to the res list. This is done to ensure
+                # that the results are not the most recent iteration of the
+                # loop.
                 output["dataset"] = dataset
                 res.append(output)
-            else:
+            else:  # At least one location was found, and is possible that an ecosystem was resolved.
                 for loc in location:
                     description = loc.get("description")
                     geometry_type = loc.get("geometry_type")
                     comments = loc.get("comments")
-                    # Use list comprehension to convert None values to empty
-                    #  strings to handle an unexpected edge case.
+                    # FIXME: This is an edge case, the origins of which are not
+                    #  yet known. Convert None values to empty strings to
+                    #  handle this for the time being.
                     comments = ["" if c is None else c for c in comments]
                     comments = " ".join(comments)
                     ecosystem = loc.get("ecosystem")
-                    if len(ecosystem) == 0:
-                        output = dict(boilerplate_output)  # Create a copy of the boilerplate
+                    if len(ecosystem) == 0:  # No ecosystems were resolved. Append and continue.
+                        output = dict(boilerplate_output)
                         output["dataset"] = dataset
                         output["description"] = description
                         output["geometry_type"] = geometry_type
                         output["comments"] = comments
                         res.append(output)
-                    else:
+                    else:  # At least one ecosystem was resolved. Parse the attributes and append.
                         for eco in ecosystem:
                             source = eco.get("source")
-                            output = dict(boilerplate_output)  # Create a copy of the boilerplate
+                            output = dict(boilerplate_output)
                             output["dataset"] = dataset
                             output["description"] = description
                             output["geometry_type"] = geometry_type
@@ -1285,7 +1292,9 @@ def json_to_df(json_dir, format="wide"):
                                 if attribute in output.keys():
                                     output[attribute] = attributes[attribute]["label"]
                             res.append(output)
-    # Convert to dataframe
+    # Convert the dictionary to a dataframe in wide format. This is the default
+    # format, and is easily facilitated because the output dictionary is
+    # flat (i.e. not nested).
     df = pd.DataFrame(res)
     # Sort for readability
     df[["scope", "identifier"]] = df["dataset"].str.split(".", n=1, expand=True)
@@ -1300,7 +1309,7 @@ def json_to_df(json_dir, format="wide"):
             "source": "ecosystem_type"
         }
     )
-    # Convert acronyms (of ecosystem types) to more descriptive names
+    # Convert acronyms (of ecosystem types) to more descriptive names for readability
     df["ecosystem_type"] = df["ecosystem_type"].replace(
         {
             "wte": "Terrestrial",
@@ -1310,7 +1319,8 @@ def json_to_df(json_dir, format="wide"):
     )
     if format == "wide":
         return df
-    # Convert df to long format
+    # Convert df to long format if specified in the function call. Attribute
+    # value pairs are the ecosystem attributes and their values.
     df = pd.melt(
         df,
         id_vars=[
@@ -1323,12 +1333,18 @@ def json_to_df(json_dir, format="wide"):
         var_name="ecosystem_attribute",
         value_name="value"
     )
-    # Remove all rows where the ecosystem is None
+
+    # Remove all rows where the ecosystem is None. This cleans up the data
+    # frame, but obfuscates the fact that some datasets have no ... [why are we
+    # doing this?].
     # df = df.dropna(subset=["value"])
-    # Drop duplicate rows and values of "n/a"
+
+    # FIXME: Drop duplicate rows and values of "n/a". This represents an edge
+    #  case that should be handled upstream. Not sure why this is happening.
     df = df.drop_duplicates()
     df = df[df["value"] != "n/a"]
-    # Sort by package_id and attribute
+
+    # Sort by package_id and attribute for readability
     df = df.sort_values(by=['package_id', 'geographic_coverage_description', 'geometry_type', 'comments',
        'ecosystem_type', 'ecosystem_attribute', 'value'])
     # Sort for readability. This is the same as the above sort but is done
@@ -1352,17 +1368,19 @@ def get_number_of_unique_ecosystems(df_wide):
     Returns
     -------
     res : dict
-        A dictionary of the number of unique ecosystems for each ecosystem type
+        A dictionary of the number of unique ecosystems for each ecosystem
+        type, i.e. "Terrestrial", "Coastal", "Marine"
     """
     # Drop the columns that are not ecosystem attributes except for ecosystem
     # type, which is needed to count the number of unique ecosystems for each
     # ecosystem type.
     df = df_wide.drop(columns=["package_id", "geographic_coverage_description", "geometry_type", "comments"])
-    # Drop duplicate rows
+    # Drop duplicate rows so that each row represents a unique ecosystem
     df = df.drop_duplicates()
-    # Drop rows where the ecosystem type is None
+    # Drop rows where the ecosystem type is None, these should not be counted.
     df = df.dropna(subset=["ecosystem_type"])
-    # Get the total number of unique ecosystems and for each ecosystem type
+    # Get the total number of unique ecosystems and for each ecosystem type and
+    # return the result as a dictionary.
     res = {}
     res["Total"] = df.shape[0]
     for eco_type in df["ecosystem_type"].unique():
@@ -1381,15 +1399,16 @@ def get_number_of_unique_geographic_coverages(df_wide):
     Returns
     -------
     res : int
-        The number of unique geographic coverages
+        The number of unique geographic coverages (locations) across all
+        datasets.
     """
     # Create a new data frame with the columns package_id,
     # geographic_coverage_description, and geometry_type. These form a
     # composite key of unique ecosystems.
     df = df_wide[["package_id", "geographic_coverage_description", "geometry_type"]]
-    # Drop duplicate rows
+    # Drop duplicate rows so that each row represents a unique ecosystem
     df = df.drop_duplicates()
-    # Get the number of unique geographic coverages
+    # Get the number of unique geographic coverages and return the result.
     res = df.shape[0]
     return res
 
@@ -1405,7 +1424,13 @@ def get_percent_of_geometries_with_no_ecosystem(df_wide):
     Returns
     -------
     res : float
-        The percent of geometries with no ecosystem
+        The percent of geometries with no ecosystem.
+
+    Notes
+    -----
+    This doesn't mean that the correct ecosystem (or all possible ecosystems
+    in actuality) for the geometry was resolved, rather that the geometry
+    resolves to ecosystem in the supported set of map servers.
     """
     # Drop the columns that are not ecosystem attributes or geometry identifiers
     # since we only want to count the number of geometries with no ecosystem.
@@ -1425,12 +1450,14 @@ def get_percent_of_geometries_with_no_ecosystem(df_wide):
         'Dissolved Oxygen', 'Nitrate', 'Phosphate', 'Silicate'
     ]
     df = df[df[ecosystem_attribute_columns].isnull().all(axis=1)]
-    # Drop duplicate rows
+    # Drop duplicate rows so that each row represents a unique geometry with no
+    # ecosystem
     df = df.drop_duplicates()
     # Get the number of rows in df, which is the number of geometries with no
     # ecosystem
     number_of_geometries_with_no_ecosystem = df.shape[0]
-    # Get the percent of geometries with no ecosystem
+    # Return as the percent of geometries with no ecosystem out of the total
+    # number of unique geometries.
     percent_of_geometries_with_no_ecosystem = number_of_geometries_with_no_ecosystem / total_number_of_unique_geometries * 100
     return percent_of_geometries_with_no_ecosystem
 
@@ -1447,7 +1474,7 @@ def plot_wide_data(df_wide):
     -------
     None
     """
-
+    # FIXME: This function should be renamed to something more descriptive.
     # Count the number of unique ecosystem_type values for each unique
     # package_id.
     df = df_wide.groupby(['package_id', 'ecosystem_type']).size().reset_index(name='Count')
@@ -1458,6 +1485,7 @@ def plot_wide_data(df_wide):
 
 
 def plot_long_data(df_long):
+    # FIXME: This function should be renamed to something more descriptive.
     # Remove rows that contain None in any column to facilitate plotting.
     df = df_long.dropna()
     # Drop geographic_coverage_description, comments, and geometry_type
@@ -1467,48 +1495,44 @@ def plot_long_data(df_long):
     df = df.drop_duplicates()
     # Group by ecosystem_type, ecosystem_attribute, and value and count the
     # number of unique package_id values for each unique combination of
-    # ecosystem_type, ecosystem_attribute, and value.
+    # ecosystem_type, ecosystem_attribute, and value. This creates the data
+    # frame that will be used to create the plots.
     df = df.groupby(['ecosystem_type', 'ecosystem_attribute', 'value']).size().reset_index(name='Count')
 
-    # Create a series of horizontal bar plots for each Coastal ecosystem type,
-    # where each plot is grouped by the ecosystem_attribute column.
+    # Create a series of horizontal bar plots for each ecosystem type,
+    # where each plot is grouped by the ecosystem_attribute column. Individual
+    # plots are necessary, rather than a single plot with subplots, because
+    # the number of plots generated for the marine and coastal ecosystem types
+    # is on the order of 10s, which is too many to display in a single plot.
     for ecosystem_type in df['ecosystem_type'].unique():
         # Subset the data frame to only include rows that contain the current
-        # ecosystem_type value.
+        # ecosystem_type (i.e. Terrestrial, Marine, or Coastal).
         df_subset = df[df['ecosystem_type'] == ecosystem_type]
         for ecosystem_attribute in df_subset['ecosystem_attribute'].unique():
             # Subset the data frame to only include rows that contain the
-            # current ecosystem_attribute value.
+            # current ecosystem_attribute values.
             df_subset2 = df_subset[df_subset['ecosystem_attribute'] == ecosystem_attribute]
-            # Sort the rows by the value column in descending order.
+            # Sort the rows by the value column in descending order for
+            # readability.
             df_subset2 = df_subset2.sort_values(by=['Count'], ascending=True)
 
-            # Start example bar chart code:
+            # TODO: There are a number of formatting issues that need to be
+            #  addressed, but not until it is determined that this is the
+            #  correct approach to visualizing the data.
+            # Start building the bar chart.
             counts = df_subset2['Count'].values.tolist()
             names = df_subset2['value'].values.tolist()
-            # The positions for the bars
-            # This allows us to determine exactly where each bar is located
+            # Set the positions for the bars. This allows us to determine
+            # the bar locations.
             y = [i * 0.9 for i in range(len(names))]
-
-            # The colors
-            BLUE = "#076fa2"
-            RED = "#E3120B"
-            BLACK = "#202020"
-            GREY = "#a2a2a2"
-
-            # Create the basic bar chart
+            # Create the basic bar chart to be customized later
             fig, ax = plt.subplots(figsize=(12, 7))
-            ax.barh(y, counts, height=0.55, align="edge", color=BLUE);
-
-            # Customize the layout
-            # ax.xaxis.set_ticks([i * 10 for i in range(0, 12)])  # TODO this is the original code
-            # ax.xaxis.set_ticklabels([i * 5 for i in range(0, 12)], size=16, fontweight=100)
-            ax.xaxis.set_ticks([i for i in range(0, max(counts), 10)])  # TODO this is the modified code
+            ax.barh(y, counts, height=0.55, align="edge", color="#076fa2");
+            # Customize the layout of the bar chart
+            ax.xaxis.set_ticks([i for i in range(0, max(counts), 10)])
             ax.xaxis.set_ticklabels([i for i in range(0, max(counts), 10)], size=16, fontweight=100)
-            ax.xaxis.set_tick_params(labelbottom=False, labeltop=True,
-                                     length=0)
-            # ax.set_xlim((0, 55.5))  # TODO this is the original code
-            ax.set_xlim((0, max(counts)+10))  # TODO this is the modified code
+            ax.xaxis.set_tick_params(labelbottom=False, labeltop=True, length=0)
+            ax.set_xlim((0, max(counts)+10))
             ax.set_ylim((0, len(names) * 0.9 - 0.2))
             # Set whether axis ticks and gridlines are above or below most artists.
             ax.set_axisbelow(True)
@@ -1523,7 +1547,6 @@ def plot_long_data(df_long):
             # Hide y labels
             ax.yaxis.set_visible(False)
             fig
-
             # Add the labels
             PAD = 0.3
             for name, count, y_pos in zip(names, counts, y):
@@ -1535,7 +1558,6 @@ def plot_long_data(df_long):
                     color = BLUE
                     path_effects = [
                         withStroke(linewidth=6, foreground="white")]
-
                 ax.text(
                     x + PAD, y_pos + 0.5 / 2, name,
                     color=color, fontsize=18,
@@ -1543,7 +1565,6 @@ def plot_long_data(df_long):
                     path_effects=path_effects
                 )
             fig
-
             # Add annotations and final tweaks
             # Make room on top and bottom
             # Note there's no room on the left and right sides
@@ -1558,31 +1579,25 @@ def plot_long_data(df_long):
             # Set facecolor, useful when saving as .png
             fig.set_facecolor("white")
             fig
-
             fig.savefig(ttl + ".png", dpi=300)
-
-
     return None
 
 
-def summarize_wte_results(wte_df):
-    """Summarize WTE results
+def summarize_results(wte_df):
+    """Summarize results
 
     Parameters
     ----------
     wte_df : pandas.DataFrame
-        A dataframe of the WTE ecosystems created by `wte_json_to_df`
+        A dataframe of the ecosystems created by `json_to_df`
 
     Returns
     -------
     res : dict
-        A dictionary of the WTE results
-
-    Examples
-    --------
-    # >>> df = globalelu.wte_json_to_df(json_dir="src/spinneret/data/json/")
-    # >>> res = summarize_wte_results(df)
+        A dictionary of the results
     """
+    # TODO: This function is outdated, but could remain useful if updated to
+    #  work with the new data summarizing functions.
     res = {}
     cols = wte_df.columns.tolist()
     cols_eco = ["Landforms", "Landcover", "Climate_Re"]
@@ -1634,11 +1649,12 @@ if __name__ == "__main__":
     # output_dir = "/Users/csmith/Data/edi/"
     # df_long.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
 
-    # Summarize WTE results
+    # Summarize results
     unique_ecosystems_by_type = get_number_of_unique_ecosystems(df_wide)
     no_ecosystem = get_percent_of_geometries_with_no_ecosystem(df_wide)
     number_of_unique_geographic_coverages = get_number_of_unique_geographic_coverages(df_wide)
-    # PLot
+
+    # PLot results
     # plot_wide_data(df_wide)
     plot_long_data(df_long)
     print("42")
