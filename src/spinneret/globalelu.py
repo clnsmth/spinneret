@@ -1283,7 +1283,6 @@ def json_to_df(json_dir, format="wide"):
                             output["geometry_type"] = geometry_type
                             output["comments"] = comments
                             output["source"] = source
-                            res.append(output)
                             attributes = eco.get("attributes")
                             # Iterate over the resolved ecosystem's attributes
                             # and add them to the output dictionary if they are
@@ -1649,12 +1648,12 @@ if __name__ == "__main__":
     # output_dir = "/Users/csmith/Data/edi/"
     # df_long.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
 
-    # Summarize results
-    unique_ecosystems_by_type = get_number_of_unique_ecosystems(df_wide)
-    no_ecosystem = get_percent_of_geometries_with_no_ecosystem(df_wide)
-    number_of_unique_geographic_coverages = get_number_of_unique_geographic_coverages(df_wide)
+    # # Summarize results
+    # unique_ecosystems_by_type = get_number_of_unique_ecosystems(df_wide)
+    # no_ecosystem = get_percent_of_geometries_with_no_ecosystem(df_wide)
+    # number_of_unique_geographic_coverages = get_number_of_unique_geographic_coverages(df_wide)
 
     # PLot results
     # plot_wide_data(df_wide)
-    plot_long_data(df_long)
+    # plot_long_data(df_long)
     print("42")
