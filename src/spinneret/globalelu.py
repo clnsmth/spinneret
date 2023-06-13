@@ -9,12 +9,6 @@ from shapely.geometry import Polygon
 from spinneret.utilities import user_agent
 from spinneret.eml import get_geographic_coverage
 import matplotlib.pyplot as plt
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-from matplotlib import lines
-from matplotlib import patches
 from matplotlib.patheffects import withStroke
 
 
@@ -1333,10 +1327,61 @@ def json_to_df(json_dir, format="wide"):
         value_name="value"
     )
 
-    # Remove all rows where the ecosystem is None. This cleans up the data
-    # frame, but obfuscates the fact that some datasets have no ... [why are we
-    # doing this?].
-    # df = df.dropna(subset=["value"])
+    # Remove rows where ecosystem_type and ecosystem_attribute should not be
+    # listed together (e.g. "Terrestrial" and "Depth"). This is a result of
+    # melting the wide data frame to a long data frame. Not doing would
+    # result in a dataframe with rows that have no meaning and that cause the
+    # user confusion. We do this by creating long dataframes for each of the
+    # ecosystem types (and their associated attributes), and then concatenating
+    # them together.
+
+    # Subset the dataframe where the ecosystem_type is "Terrestrial".
+    df_terrestrial = df[df["ecosystem_type"] == "Terrestrial"]
+    df_terrestrial = df_terrestrial[
+        df_terrestrial["ecosystem_attribute"].isin(
+            [
+                "Climate_Re",
+                "Landcover",
+                "Landforms"
+            ]
+        )
+    ]
+    # Subset the dataframe where the ecosystem_type is "Coastal".
+    df_coastal = df[df["ecosystem_type"] == "Coastal"]
+    df_coastal = df_coastal[
+        df_coastal["ecosystem_attribute"].isin(
+            [
+                "Slope",
+                "Sinuosity",
+                "Erodibility",
+                "Temperature and Moisture Regime",
+                "River Discharge",
+                "Wave Height",
+                "Tidal Range",
+                "Marine Physical Environment",
+                "Turbidity",
+                "Chlorophyll"
+            ]
+        )
+    ]
+    # Subset the dataframe where the ecosystem_type is "Marine".
+    df_marine = df[df["ecosystem_type"] == "Marine"]
+    df_marine = df_marine[
+        df_marine["ecosystem_attribute"].isin(
+            [
+                "OceanName",
+                "Depth",
+                "Temperature",
+                "Salinity",
+                "Dissolved Oxygen",
+                "Nitrate",
+                "Phosphate",
+                "Silicate"
+            ]
+        )
+    ]
+    # Concatenate the three dataframes together.
+    df = pd.concat([df_terrestrial, df_coastal, df_marine])
 
     # FIXME: Drop duplicate rows and values of "n/a". This represents an edge
     #  case that should be handled upstream. Not sure why this is happening.
@@ -1643,10 +1688,10 @@ if __name__ == "__main__":
     df_long = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="long")
     df_wide = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="wide")
 
-    # # Write df to tsv
-    # import csv
-    # output_dir = "/Users/csmith/Data/edi/"
-    # df_long.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
+    # Write df to tsv
+    import csv
+    output_dir = "/Users/csmith/Data/edi/"
+    df_long.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
 
     # # Summarize results
     # unique_ecosystems_by_type = get_number_of_unique_ecosystems(df_wide)
