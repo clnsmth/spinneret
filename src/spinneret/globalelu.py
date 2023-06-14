@@ -1528,7 +1528,7 @@ def plot_wide_data(df_wide):
     return None
 
 
-def plot_long_data(df_long):
+def plot_long_data(df_long, output_dir):
     # FIXME: This function should be renamed to something more descriptive.
     # Remove rows that contain None in any column to facilitate plotting.
     df = df_long.dropna()
@@ -1560,25 +1560,27 @@ def plot_long_data(df_long):
             # readability.
             df_subset2 = df_subset2.sort_values(by=['Count'], ascending=True)
 
-            # TODO: There are a number of formatting issues that need to be
-            #  addressed, but not until it is determined that this is the
-            #  correct approach to visualizing the data.
             # Start building the bar chart.
             counts = df_subset2['Count'].values.tolist()
             names = df_subset2['value'].values.tolist()
+            BLUE = "#076fa2"
             # Set the positions for the bars. This allows us to determine
             # the bar locations.
             y = [i * 0.9 for i in range(len(names))]
-            # Create the basic bar chart to be customized later
+            # Create the basic bar chart
             fig, ax = plt.subplots(figsize=(12, 7))
-            ax.barh(y, counts, height=0.55, align="edge", color="#076fa2");
+            ax.barh(y, counts, height=0.55, align="edge", color=BLUE);
             # Customize the layout of the bar chart
-            ax.xaxis.set_ticks([i for i in range(0, max(counts), 10)])
-            ax.xaxis.set_ticklabels([i for i in range(0, max(counts), 10)], size=16, fontweight=100)
+            if max(counts) >= 200:
+                x_tick_interval = 20
+            else:
+                x_tick_interval = 10
+            ax.xaxis.set_ticks([i for i in range(0, max(counts), x_tick_interval)])
+            ax.xaxis.set_ticklabels([i for i in range(0, max(counts), x_tick_interval)], size=16, fontweight=100)
             ax.xaxis.set_tick_params(labelbottom=False, labeltop=True, length=0)
             ax.set_xlim((0, max(counts)+10))
             ax.set_ylim((0, len(names) * 0.9 - 0.2))
-            # Set whether axis ticks and gridlines are above or below most artists.
+            # Set whether axis ticks and gridlines are above or below most axes.
             ax.set_axisbelow(True)
             ax.grid(axis="x", color="#A8BAC4", lw=1.2)
             ax.spines["right"].set_visible(False)
@@ -1597,7 +1599,23 @@ def plot_long_data(df_long):
                 x = 0
                 color = "lightgrey"
                 path_effects = None
-                if count < 8:
+                # Determine if the bar label should be inside or outside the
+                # bar by comparing the x value of the bar to the x value of
+                # the text label. To do this we first plot both with
+                # "invisible ink", get the max x position of each, and then
+                # compare them.
+                ax.text(
+                    x + PAD, y_pos + 0.5 / 2, name,
+                    color="none", fontsize=18,
+                    va="center",
+                    path_effects=path_effects
+                )
+                x_text_end = ax.texts[-1].get_window_extent().x1
+                ax.plot(count, y_pos, ".", color="none", markersize=18)
+                x_point = ax.lines[-1].get_window_extent().x1
+                position_label_to_right_of_bar = x_text_end > x_point
+                # Add the text label to the appropriate position
+                if position_label_to_right_of_bar:
                     x = count
                     color = BLUE
                     path_effects = [
@@ -1612,18 +1630,21 @@ def plot_long_data(df_long):
             # Add annotations and final tweaks
             # Make room on top and bottom
             # Note there's no room on the left and right sides
-            fig.subplots_adjust(left=0.005, right=1, top=0.8, bottom=0.1)
+            fig.subplots_adjust(left=0.05, right=1, top=0.8, bottom=0.1)
+            # Add x label
+            ax.set_xlabel("Number of Datasets", size=18, fontweight=100)
+            ax.xaxis.set_label_coords(0.5, 1.14)
             # Add title
-            ttl = "Number of Data Packages for {} - {}".format(ecosystem_type,
-                                                         ecosystem_attribute)
+            ttl = "{} - {}".format(ecosystem_type, ecosystem_attribute)
             fig.text(
-                0, 0.925, ttl,
+                # 0, 0.925, ttl,
+                0.05, 0.925, ttl,
                 fontsize=22, fontweight="bold"
             )
             # Set facecolor, useful when saving as .png
             fig.set_facecolor("white")
             fig
-            fig.savefig(ttl + ".png", dpi=300)
+            fig.savefig(output_dir + ttl + ".png", dpi=300)
     return None
 
 
@@ -1688,17 +1709,17 @@ if __name__ == "__main__":
     df_long = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="long")
     df_wide = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="wide")
 
-    # Write df to tsv
-    import csv
-    output_dir = "/Users/csmith/Data/edi/"
-    df_long.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
+    # # Write df to tsv
+    # import csv
+    # output_dir = "/Users/csmith/Data/edi/"
+    # df_long.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
 
-    # # Summarize results
-    # unique_ecosystems_by_type = get_number_of_unique_ecosystems(df_wide)
-    # no_ecosystem = get_percent_of_geometries_with_no_ecosystem(df_wide)
-    # number_of_unique_geographic_coverages = get_number_of_unique_geographic_coverages(df_wide)
+    # Summarize results
+    unique_ecosystems_by_type = get_number_of_unique_ecosystems(df_wide)
+    no_ecosystem = get_percent_of_geometries_with_no_ecosystem(df_wide)
+    number_of_unique_geographic_coverages = get_number_of_unique_geographic_coverages(df_wide)
 
     # PLot results
     # plot_wide_data(df_wide)
-    # plot_long_data(df_long)
+    plot_long_data(df_long, output_dir="/Users/csmith/Data/edi/top_20_plots/")
     print("42")
