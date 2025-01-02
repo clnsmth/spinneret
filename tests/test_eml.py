@@ -1,8 +1,14 @@
 """Tests for the eml module."""
+import json
+import tempfile
+import os
+from os.path import join, splitext, getsize, getmtime, basename, exists
+import glob
 from json import dumps
 import pytest
 from unittest.mock import patch
-from spinneret import eml
+from spinneret import eml, globalelu, utilities
+
 
 
 @pytest.fixture
@@ -259,3 +265,113 @@ def test__convert_to_meters(geocov):
     assert g._convert_to_meters(x=None, from_units="meters") is None
     # Case when altitude is specified and units are specified. Should convert to meters.
     assert g._convert_to_meters(x=10, from_units="foot") == 3.048
+
+
+def test_eml_to_wte_json():
+    """Test the eml_to_wte_json() function.
+
+    Each EML file in the src/spinneret/data/eml/ directory should be converted
+    to a json file and saved to an output directory. When an EML file is
+    missing, the eml_to_wte_json() function should fill the gap by creating
+    the json file. Additionally, existing json files should not be overwritten
+    unless the overwrite flag is set to True.
+
+    Note, fixtures of the json files cannot be used to test against because
+    set operations are frequently used in the eml_to_wte_json() subroutines,
+    which do not preserve order, and hence the fixture always be
+    different from the output of the eml_to_wte_json() function, except by
+    random chance.
+    """
+    fpaths_in = glob.glob("src/spinneret/data/eml/" + "*.xml")
+    fnames_in = [splitext(basename(f))[0] for f in fpaths_in]
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Each EML file in the src/spinneret/data/eml/ directory should be
+        # converted to a json file and saved to an output directory.
+        eml.eml_to_wte_json(eml_dir="src/spinneret/data/eml/", output_dir=tmpdir)
+        fpaths_out = os.listdir(tmpdir)
+        for f in fnames_in:
+            assert f + ".json" in fpaths_out
+            assert getsize(join(tmpdir, f + ".json")) > 0
+
+        # When an EML file is missing a corresponding json file, the
+        # eml_to_wte_json() function should fill the gap by creating the json
+        # file.
+        os.remove(join(tmpdir, fnames_in[0] + ".json"))
+        assert exists(join(tmpdir, fnames_in[0] + ".json")) is False
+        eml.eml_to_wte_json(eml_dir="src/spinneret/data/eml/", output_dir=tmpdir)
+        assert exists(join(tmpdir, fnames_in[0] + ".json")) is True
+
+        # Additionally, existing json files should not be overwritten
+        # unless the overwrite flag is set to True.
+        # Get date and time of existing json files
+        dates = {}
+        for f in fnames_in:
+            dates[f] = getmtime(join(tmpdir, f + ".json"))
+        # Run the function again without overwriting existing json files
+        eml.eml_to_wte_json(eml_dir="src/spinneret/data/eml/", output_dir=tmpdir)
+        for f in fnames_in:
+            assert getmtime(join(tmpdir, f + ".json")) == dates[f]
+        # Run the function again with overwriting existing json files
+        eml.eml_to_wte_json(
+            eml_dir="src/spinneret/data/eml/", output_dir=tmpdir, overwrite=True
+        )
+        for f in fnames_in:
+            assert getmtime(join(tmpdir, f + ".json")) != dates[f]
+
+
+def test_eml_to_wte_json_wte_envelope(geocov):
+    """Test the eml_to_wte_json() function with a WTE envelope."""
+
+    # FIXME: This test is a temporary approach to testing how envelopes are
+    #  handled by the ecosystem lookup on the WTE server. It is essentially a
+    #  manual integration test, and will be removed in the future.
+    g = geocov[0]  # Envelope encompassing multiple ecosystems  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    geometry = g.to_esri_geometry()
+    ecosystems_in_envelope = []
+    points = utilities._polygon_or_envelope_to_points(geometry)
+    for point in points:
+        try:
+            r = globalelu.identify(geometry=point, map_server="wte")
+        except ConnectionError:
+            r = None
+        if r is not None:
+            # Build the ecosystem object and add it to the location.
+            if r.has_ecosystem(source="wte"):
+                ecosystems = r.get_ecosystems(source="wte")
+                # TODO Implement a uniquing function to handle this edge case
+                #  after geometry type passing is finalized, which may negate
+                #  the need for this edge case handling.
+                ecosystems_in_envelope.append(json.dumps(ecosystems[0]))
+    ecosystems_in_envelope = list(set(ecosystems_in_envelope))
+    ecosystems_in_envelope = [json.loads(e) for e in ecosystems_in_envelope]
+    # TODO (end TODO) -----------------------------------------------
+    assert len(ecosystems_in_envelope) == 4
+    for item in ecosystems_in_envelope:
+        assert isinstance(item, dict)
+
+    # TODO refactor this test according to any changes made above. This is a
+    #  copy.
+
+    g = geocov[3]  # Polygon encompassing multiple ecosystems  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    geometry = g.to_esri_geometry()
+    ecosystems_in_envelope = []
+    points = utilities._polygon_or_envelope_to_points(geometry)
+    for point in points:
+        try:
+            r = globalelu.identify(geometry=point, map_server="wte")
+        except ConnectionError:
+            r = None
+        if r is not None:
+            # Build the ecosystem object and add it to the location.
+            if r.has_ecosystem(source="wte"):
+                ecosystems = r.get_ecosystems(source="wte")
+                # TODO Implement a uniquing function to handle this edge case
+                #  after geometry type passing is finalized, which may negate
+                #  the need for this edge case handling.
+                ecosystems_in_envelope.append(json.dumps(ecosystems[0]))
+    ecosystems_in_envelope = list(set(ecosystems_in_envelope))
+    ecosystems_in_envelope = [json.loads(e) for e in ecosystems_in_envelope]
+    # TODO (end TODO) -----------------------------------------------
+    assert len(ecosystems_in_envelope) == 1
+    for item in ecosystems_in_envelope:
+        assert isinstance(item, dict)

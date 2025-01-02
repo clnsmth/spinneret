@@ -1,9 +1,13 @@
 """EML metadata related operations"""
+
+import glob
 import json
+import os
 from math import isnan
 from lxml import etree
-import pandas as pd
-import geopandas as gpd
+from spinneret.globalelu import Base, Location, identify, \
+    query
+from spinneret.utilities import _polygon_or_envelope_to_points
 
 
 def get_geographic_coverage(eml):
@@ -468,6 +472,218 @@ def _load_conversion_factors():
         "mile": 1609.344,
     }
     return conversion_factors
+
+
+def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
+    """Convert geographic coverages of EML to WTE ecosystems and write to
+    json file
+
+    Parameters
+    ----------
+    eml_dir : str
+        Path to directory containing EML files
+    output_dir : str
+        Path to directory to write output files
+    overwrite : bool, optional
+        Overwrite existing json files, by default False
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    An empty json file indicates no geographic coverage was found. The
+    presence of a json file in the `output_dir` indicates the input file was
+    processed.
+
+    Examples
+    --------
+    # >>> eml_to_wte_json(
+    # ...     eml_dir='data/eml/',
+    # ...     output_dir='data/json/'
+    # ... )
+    """
+    files = glob.glob(eml_dir + "*.xml")
+    # Iterate over EML files (i.e. datasets)
+    for file in files:
+        file_name = os.path.splitext(os.path.basename(file))[0]
+        output_file_path = os.path.join(output_dir, file_name + ".json")
+        # Initialize the DataModel Base object, which forms the basis of the
+        # return object
+        base = Base()
+        base.set_dataset(file_name)
+        # Don't overwrite existing json files unless specified
+        if os.path.isfile(output_file_path) and not overwrite:
+            continue
+        print(file)
+        # Get metadata for dataset location
+        gc = get_geographic_coverage(file)
+        if gc is None:  # No geographic coverage (location) found
+            with open(output_file_path, "w", encoding="utf-8") as f:
+                json.dump(base.data, f)
+            continue
+        for g in gc:
+            # Build a location object for each geographic coverage and add it
+            # to the base object
+            location = Location()
+            location.set_description(g.description())
+            location.set_geometry_type(g.geom_type())
+            # Identify all ecosystems at the location (i.e. for the geometry)
+
+            # Query the WTE map server
+            if g.geom_type() == "point":
+                location.add_comments("WTE: Was queried.")
+                try:
+                    r = identify(geometry=g.to_esri_geometry(), map_server="wte")
+                except ConnectionError:
+                    r = None
+                    location.add_comments(
+                        "WTE: Connection error. Please try again."
+                    )  # TODO: This should be more informative
+                if r is not None:
+                    # Build the ecosystem object and add it to the location.
+                    if r.has_ecosystem(source="wte"):
+                        ecosystems = r.get_ecosystems(source="wte")
+                        location.add_ecosystem(ecosystems)
+                    else:
+                        # Add an explanatory comment if not resolved, to
+                        # facilitate understanding and analysis.
+                        location.add_comments(r.get_comments("wte"))
+            # FIXME-WTE: Below is a draft implementation supporting identify
+            #  operations on the WTE map server for envelope types. This should
+            #  be extended to polygons and then merged with the above code
+            #  block to in a way that is consistent (as possible) with the
+            #  queries of ECU and EMU map servers, so all three can be wrapped
+            #  in a single function for sake of simplicity.
+            #  The current implmentation uses iteration over the point
+            #  geometries representing the envelope, collecting the results in
+            #  a list, then finally appending to the location object.
+            #  A POTENTIAL SOLUTION here is to:
+            #  - allow envelope and polygon geometries into the identify
+            #  operation
+            #  - convert the envelope to a polygon geometries into points
+            #  - perform iteration on the geometries
+            #  - construct an r.json response object that incorporates the
+            #  results and which mimicks the natural server response (but with
+            #  a list of ecosystem attributes, one from each identify)
+            #  - resume processing as normal.
+            #  The advantage of this approach is that it is consistent with the
+            #  point implementation for WTE and all query operations for ECU
+            #  and EMU. Additionally, understanding of the code is simplified
+            #  by placing this as close as possible to the identify operation
+            #  rather than creating long drawnout code blocks and logic that
+            #  is too much to keep in mind at once.
+            #  Testing currently occurs in:
+            #  - test/test_globalelu.py::test_eml_to_wte_json_wte_envelope
+            if g.geom_type() == "envelope" or g.geom_type() == "polygon":
+                location.add_comments("WTE: Was queried.")
+                points = _polygon_or_envelope_to_points(
+                    g.to_esri_geometry()
+                )  # Differs from the point implementation
+                # Differs from point implementation
+                ecosystems_in_envelope = []
+                ecosystems_in_envelope_comments = (
+                    []
+                )  # Differs from the point implementation
+                for point in points:  # Differs from the point implementation
+                    try:
+                        r = identify(geometry=point, map_server="wte")
+                    except ConnectionError:
+                        r = None
+                        location.add_comments(
+                            "WTE: Connection error. Please try again."
+                        )  # TODO: This should be more informative
+                    if r is not None:
+                        # Build the ecosystem object and add it to the
+                        # location.
+                        if r.has_ecosystem(source="wte"):
+                            ecosystems = r.get_ecosystems(source="wte")
+                            # TODO Implement a uniquing function to handle the
+                            #  envelope and polygon edge cases. The common
+                            #  pattern is to do this as a subroutine of
+                            #  get_ecosystems() but is temporarily being
+                            #  implemented here until a good design pattern is
+                            #  found. Proposed design patterns are:
+                            #
+                            # Differs from the point implementation
+                            ecosystems_in_envelope.append(json.dumps(ecosystems[0]))
+                        else:
+                            # Add an explanatory comment if not resolved, to
+                            # facilitate understanding and analysis.
+                            ecosystems_in_envelope_comments.append(
+                                r.get_comments("wte")
+                            )  # Differs from the point implementation
+                ecosystems_in_envelope = list(
+                    set(ecosystems_in_envelope)
+                )  # Differs from the point implementation
+                ecosystems_in_envelope = [
+                    json.loads(e) for e in ecosystems_in_envelope
+                ]  # Differs from the point implementation
+                # FIXME This creates a list of comments in the response object.
+                #  This should only be a string, however, more than one
+                #  comment may result from multiple queries. What to do?
+                ecosystems_in_envelope_comments = list(
+                    set(ecosystems_in_envelope_comments)
+                )  # Differs from the point implementation
+                location.add_ecosystem(
+                    ecosystems_in_envelope
+                )  # Differs from the point implementation
+                location.add_comments(
+                    ecosystems_in_envelope_comments
+                )  # Differs from the point implementation
+                # TODO end of draft implementation for envelopes --------------
+            # if g.geom_type() == "polygon":
+            #     location.add_comments("WTE: Was not queried because geometry
+            #     is an unsupported type.")
+
+            # Query the ECU map server
+            location.add_comments("ECU: Was queried.")
+            try:
+                r = query(geometry=g.to_esri_geometry(), map_server="ecu")
+            except ConnectionError:
+                r = None
+                location.add_comments(
+                    "ECU: Connection error. Please try again."
+                )  # TODO: This should be more informative
+            if r is not None:
+                # Build the ecosystem object and add it to the location.
+                if r.has_ecosystem(source="ecu"):
+                    ecosystems = r.get_ecosystems(source="ecu")
+                    location.add_ecosystem(ecosystems)
+                else:
+                    # Add an explanatory comment if not resolved, to
+                    # facilitate understanding and analysis.
+                    location.add_comments(r.get_comments("ecu"))
+
+            # Query the EMU map server
+            location.add_comments("EMU: Was queried.")
+            try:
+                r = query(geometry=g.to_esri_geometry(), map_server="emu")
+            except ConnectionError:
+                r = None
+                location.add_comments(
+                    "EMU: Connection error. Please try again."
+                )  # TODO: This should be more informative
+            if r is not None:
+                # Build the ecosystem object and add it to the location.
+                if r.has_ecosystem(source="emu"):
+                    ecosystems = r.get_ecosystems(source="emu")
+                    location.add_ecosystem(ecosystems)
+                else:
+                    # Add an explanatory comment if not resolved, to
+                    # facilitate understanding and analysis.
+                    location.add_comments(r.get_comments("ecu"))
+
+            # TODO Query the Freshwater map server
+
+            # Add the location, and its ecosystems, to the base object.
+            base.add_location(location)
+        # Write the base object to a json file. Empty locations indicate no
+        # ecosystems were found at the location. Empty ecosystems indicate the
+        # location has no resolvable ecosystems.
+        with open(output_file_path, "w", encoding="utf-8") as f:
+            json.dump(base.data, f)
 
 
 if __name__ == "__main__":
