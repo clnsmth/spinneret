@@ -201,6 +201,11 @@ def test_Attributes_init():
             ]
         elif source == "ecu":
             attributes = globalelu.Attributes(source="ecu")
+            # The expected attribute keys are not returned in the API response,
+            # but are defined in https://doi.org/10.5670/oceanog.2021.219. We
+            # use the paper to define the expected attributes here, and set
+            # them in the order that is consistently returned in the API
+            # response.
             expected_attributes = [
                 "Slope",
                 "Sinuosity",
