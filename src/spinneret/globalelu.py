@@ -12,6 +12,9 @@ import matplotlib.pyplot as plt
 from matplotlib.patheffects import withStroke
 
 
+# pylint: disable=too-many-lines
+
+
 def _json_extract(obj, key):
     """Recursively fetch values from nested JSON.
 
@@ -62,10 +65,15 @@ class Base:
 
 class Location:
     def __init__(self):
+        # Note, geometry_type (below) is the actual geometry type (e.g. point)
+        # rather than the ESRI representation (e.g. envelope with same lat
+        # min/max and lon min/max), because this is used for diagnostic
+        # purposes and understanding if the underlying sampling space is a
+        # point or envelope.
         self.data = {
             "identifier": None,
             "description": None,
-            "geometry_type": None,  # TODO This is the actual geometry type (e.g. point) rather than the ESRI representation (e.g. envelope with same lat min/max and lon min/max), because this is used for diagnostic purposes and understanding if the underlying sampling space is a point or envelope.
+            "geometry_type": None,
             "comments": [],
             "ecosystem": [],
         }
@@ -252,10 +260,11 @@ class Attributes:
             }
         # Add composite CSU_Description class and annotation.
         # Get ecosystems values and join with commas
-        # TODO Fix issue where an attribute from the initialized list returned by
-        #  Attributes() was missing for some reason and thus an annotation couldn't
-        #  be found for it. If arbitrary joining of empties to the annotation string
-        #  is done, then the annotation may be wrong. Best to just leave it out.
+        # TODO Fix issue where an attribute from the initialized list returned
+        #  by  Attributes() was missing for some reason and thus an annotation
+        #  couldn't  be found for it. If arbitrary joining of empties to the
+        #  annotation string is done, then the annotation may be wrong. Best to
+        #  just leave it out.
         CSU_Descriptor = [f.get("label") for f in self.data.values()]
         # Knock of the last one, which is CSU_Descriptor
         CSU_Descriptor = CSU_Descriptor[:-1]
@@ -291,7 +300,8 @@ class Attributes:
         descriptors = attributes.get("Name_2018")
         descriptors = descriptors.split(",")
         descriptors = [g.strip() for g in descriptors]
-        # Add ocean name to front of descriptors list in preparation for the zipping operation below
+        # Add ocean name to front of descriptors list in preparation for the
+        # zipping operation below
         descriptors = [ocean_name] + descriptors
         atomic_attribute_labels = self.data.keys()
         # Zip descriptors and atomic attribute labels
@@ -308,10 +318,11 @@ class Attributes:
             }
         # Add composite EMU_Description class and annotation.
         # Get ecosystems values and join with commas
-        # TODO Fix issue where an attribute from the initialized list returned by
-        #  Attributes() was missing for some reason and thus an annotation couldn't
-        #  be found for it. If arbitrary joining of empties to the annotation string
-        #  is done, then the annotation may be wrong. Best to just leave it out.
+        # TODO Fix issue where an attribute from the initialized list returned
+        #  by  Attributes() was missing for some reason and thus an annotation
+        #  couldn't  be found for it. If arbitrary joining of empties to the
+        #  annotation string  is done, then the annotation may be wrong. Best
+        #  to just leave it out.
         EMU_Descriptor = [f.get("label") for f in self.data.values()]
         # Knock of the last one, which is EMU_Descriptor
         EMU_Descriptor = EMU_Descriptor[:-1]
@@ -332,7 +343,8 @@ class Attributes:
 
         # FIXME: This is a hack to deal with the fact that some of the
         #  attributes are None. Not sure why this is happening. Recreate this
-        #  issue by running on geographic coverage in the file knb-lter-sbc.100.11.xml
+        #  issue by running on geographic coverage in the file
+        #  knb-lter-sbc.100.11.xml
         if None in EMU_Descriptor_annotation:
             EMU_Descriptor_annotation = [
                 "Placeholder" if f is None else f for f in EMU_Descriptor_annotation
@@ -432,8 +444,8 @@ class Response:
                 return False
             return True
         elif source == "ecu" or source == "emu":
-            # FIXME: This produces an error when running the geographic coverage
-            #  in the file knb-lter-ntl.420.2.
+            # FIXME: This produces an error when running the geographic
+            #  coverage in the file knb-lter-ntl.420.2.
             res = len(self.json["features"])
             if res == 0:
                 return False
@@ -497,12 +509,14 @@ class Response:
             #  derived. Either this function should be split into two, or the
             #  WTE and ECU function's get and unique operations should be
             #  combined into one.
-            self.convert_codes_to_values(
-                source="emu"
-            )  # FIXME? This pattern differs from WTE and ECU implementations. Change? See implementation notes.
-            descriptors = self.get_ecosystems_for_geometry_z_values(
-                source="emu"
-            )  # FIXME? This pattern differs from WTE and ECU implementations. Change? See implementation notes.
+
+            # FIXME? This pattern differs from WTE and ECU implementations.
+            #  Change? See implementation notes.
+            self.convert_codes_to_values(source="emu")
+
+            # FIXME? This pattern differs from WTE and ECU implementations.
+            #  Change? See implementation notes.
+            descriptors = self.get_ecosystems_for_geometry_z_values(source="emu")
             return descriptors
 
     def get_ecosystems(self, source):
@@ -615,12 +629,13 @@ class Response:
 
     def get_ecosystems_for_geometry_z_values(self, source="emu"):
         if source == "emu":
-            # - Get the z values from the geometry attribute of the response object
+            # - Get the z values from the geometry attribute of the response
+            # object
             geometry = json.loads(self.geometry)
             zmin = geometry.get("zmin")
             zmax = geometry.get("zmax")
             res = []
-            if zmin is None or zmax is None:  # Case when no z values are provided
+            if zmin is None or zmax is None:  # Case with no z values
                 for item in self.json["features"]:
                     parsed = {
                         "attributes": {
@@ -655,7 +670,8 @@ class Response:
                             }
                         }
                         res.append(json.dumps(parsed))
-            # Get the unique set of ecosystems (don't want duplicates) and convert back to a list as preferred by subsequent operations
+            # Get the unique set of ecosystems (don't want duplicates) and
+            # convert back to a list as preferred by subsequent operations
             res = set(res)
             res = list(res)
             return res
@@ -665,7 +681,8 @@ def identify(geometry=str, map_server=str):
     """Run an identify operation on a USGS map service resource and return the
     requested attributes
 
-    For more see: https://rmgsc.cr.usgs.gov/arcgis/sdk/rest/index.html#/Identify_Map_Service/02ss000000m7000000/
+    For more see: https://rmgsc.cr.usgs.gov/arcgis/sdk/rest/index.html#/
+        Identify_Map_Service/02ss000000m7000000/
 
     Parameters
     ----------
@@ -707,7 +724,8 @@ def query(geometry=str, map_server=str):
     """Run a query operation on a USGS map service resource and return the
     requested attributes
 
-    For more see: https://rmgsc.cr.usgs.gov/arcgis/sdk/rest/index.html#//02ss0000000r000000
+    For more see: https://rmgsc.cr.usgs.gov/arcgis/sdk/rest/index.html#//
+        02ss0000000r000000
 
     Parameters
     ----------
@@ -726,9 +744,9 @@ def query(geometry=str, map_server=str):
     Notes
     -----
     Point locations should be represented as envelopes, i.e. where xmin=xmax,
-    xmin=xmax, and zmin=zmax. Z can be null. The results will be the same. Usage of
-    `esriGeometryEnvelope`/`envelope` is used in place of esriGeometryPoint because
-    it behaves the same and it allows for the
+    xmin=xmax, and zmin=zmax. Z can be null. The results will be the same.
+    Usage of `esriGeometryEnvelope`/`envelope` is used in place of
+    esriGeometryPoint because it behaves the same and it allows for the
     expression of zmin and zmax, which in the case of some map services, such
     as `emu`, it is necessary to return all ecosystems occurring within an
     elevation range, rather than only a point location.
@@ -745,9 +763,11 @@ def query(geometry=str, map_server=str):
             # sampling locations, represented by point geometries, and location
             # of ECUs. This is a conservative estimate of the spatial
             # accuracy between the point location and nearby ECUs.
-            geometry = convert_point_to_envelope(
-                geometry, buffer=0.5
-            )  # TODO Rename to add_buffer? Doing so may keep from confounding the fact that the input geometry may either represent a true point or an envelope
+
+            # TODO Rename to add_buffer? Doing so may keep from confounding the
+            #  fact that the input geometry may either represent a true point
+            #  or an envelope
+            geometry = convert_point_to_envelope(geometry, buffer=0.5)
         payload = {
             "f": "geojson",
             "geometry": geometry,
@@ -917,8 +937,9 @@ def _polygon_or_envelope_to_points(geometry):
 
     Returns
     -------
-    list : A list of ESRI envelope geometries (as str) representing point locations
-    (i.e. xmin == xmax and ymin == ymax). Note, this is a design decision.
+    list : A list of ESRI envelope geometries (as str) representing point
+    locations (i.e. xmin == xmax and ymin == ymax). Note, this is a design
+    decision.
 
     Notes
     -----
@@ -1072,16 +1093,17 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             #  block to in a way that is consistent (as possible) with the
             #  queries of ECU and EMU map servers, so all three can be wrapped
             #  in a single function for sake of simplicity.
-            #  The current implmentation uses iteration over the point geometries
-            #  representing the envelope, collecting the results in a list,
-            #  then finally appending to the location object.
+            #  The current implmentation uses iteration over the point
+            #  geometries representing the envelope, collecting the results in
+            #  a list, then finally appending to the location object.
             #  A POTENTIAL SOLUTION here is to:
-            #  - allow envelope and polygon geometries into the identify operation
+            #  - allow envelope and polygon geometries into the identify
+            #  operation
             #  - convert the envelope to a polygon geometries into points
             #  - perform iteration on the geometries
-            #  - construct an r.json response object that incorporates the results
-            #    and which mimicks the natural server response (but with a list
-            #    of ecosystem attributes, one from each identify)
+            #  - construct an r.json response object that incorporates the
+            #  results and which mimicks the natural server response (but with
+            #  a list of ecosystem attributes, one from each identify)
             #  - resume processing as normal.
             #  The advantage of this approach is that it is consistent with the
             #  point implementation for WTE and all query operations for ECU
@@ -1096,7 +1118,8 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 points = _polygon_or_envelope_to_points(
                     g.to_esri_geometry()
                 )  # Differs from the point implementation
-                ecosystems_in_envelope = []  # Differs from the point implementation
+                # Differs from point implementation
+                ecosystems_in_envelope = []
                 ecosystems_in_envelope_comments = (
                     []
                 )  # Differs from the point implementation
@@ -1109,19 +1132,19 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                             "WTE: Connection error. Please try again."
                         )  # TODO: This should be more informative
                     if r is not None:
-                        # Build the ecosystem object and add it to the location.
+                        # Build the ecosystem object and add it to the
+                        # location.
                         if r.has_ecosystem(source="wte"):
                             ecosystems = r.get_ecosystems(source="wte")
                             # TODO Implement a uniquing function to handle the
-                            #  envelope and polygon edge cases. The common pattern
-                            #  is to do this as a subroutine of get_ecosystems()
-                            #  but is temporarily being implemented here until
-                            #  a good design pattern is found. Proposed design
-                            #  patterns are:
+                            #  envelope and polygon edge cases. The common
+                            #  pattern is to do this as a subroutine of
+                            #  get_ecosystems() but is temporarily being
+                            #  implemented here until a good design pattern is
+                            #  found. Proposed design patterns are:
                             #
-                            ecosystems_in_envelope.append(  # Differs from the point implementation
-                                json.dumps(ecosystems[0])
-                            )
+                            # Differs from the point implementation
+                            ecosystems_in_envelope.append(json.dumps(ecosystems[0]))
                         else:
                             # Add an explanatory comment if not resolved, to
                             # facilitate understanding and analysis.
@@ -1146,9 +1169,10 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                 location.add_comments(
                     ecosystems_in_envelope_comments
                 )  # Differs from the point implementation
-                # TODO end of draft implementation for envelopes ----------------------------
+                # TODO end of draft implementation for envelopes --------------
             # if g.geom_type() == "polygon":
-            #     location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
+            #     location.add_comments("WTE: Was not queried because geometry
+            #     is an unsupported type.")
 
             # Query the ECU map server
             location.add_comments("ECU: Was queried.")
@@ -1220,10 +1244,10 @@ def json_to_df(json_dir, format="wide"):
     The results of this function modify the native representation of ecosystems
     returned by map servers from grouped sets of attributes to grouped sets of
     unique attributes, and thus changes the semantics of how the map server
-    authors intended the data to be interpreted. Specifically, areal geometries,
-    returned by this function, include the unique attributes of all ecosystems
-    within the area, whereas point geometries will only include the attributes
-    of the ecosystem at the point.
+    authors intended the data to be interpreted. Specifically, areal
+    geometries, returned by this function, include the unique attributes of all
+    ecosystems within the area, whereas point geometries will only include the
+    attributes of the ecosystem at the point.
     """
     files = glob.glob(json_dir + "*.json")
     if not files:
@@ -1268,7 +1292,8 @@ def json_to_df(json_dir, format="wide"):
             j = json.load(f)
             dataset = j.get("dataset")
             location = j.get("location")
-            if len(location) == 0:  # No locations were found. Append and continue.
+            # No locations were found. Append and continue.
+            if len(location) == 0:
                 output = dict(
                     boilerplate_output
                 )  # Create a copy of the boilerplate and begin populating it
@@ -1279,7 +1304,10 @@ def json_to_df(json_dir, format="wide"):
                 # loop.
                 output["dataset"] = dataset
                 res.append(output)
-            else:  # At least one location was found, and is possible that an ecosystem was resolved.
+            else:
+                # At least one location was found, and is possible that an
+                # ecosystem was resolved.# At least one location was found,
+                # and is possible that an ecosystem was resolved.
                 for loc in location:
                     description = loc.get("description")
                     geometry_type = loc.get("geometry_type")
@@ -1299,7 +1327,9 @@ def json_to_df(json_dir, format="wide"):
                         output["geometry_type"] = geometry_type
                         output["comments"] = comments
                         res.append(output)
-                    else:  # At least one ecosystem was resolved. Parse the attributes and append.
+                    else:
+                        # At least one ecosystem was resolved. Parse the
+                        # attributes and append.
                         for eco in ecosystem:
                             source = eco.get("source")
                             output = dict(boilerplate_output)
@@ -1333,7 +1363,8 @@ def json_to_df(json_dir, format="wide"):
             "source": "ecosystem_type",
         }
     )
-    # Convert acronyms (of ecosystem types) to more descriptive names for readability
+    # Convert acronyms (of ecosystem types) to more descriptive names for
+    # readability
     df["ecosystem_type"] = df["ecosystem_type"].replace(
         {"wte": "Terrestrial", "ecu": "Coastal", "emu": "Marine"}
     )
@@ -1514,8 +1545,9 @@ def get_percent_of_geometries_with_no_ecosystem(df_wide):
     in actuality) for the geometry was resolved, rather that the geometry
     resolves to ecosystem in the supported set of map servers.
     """
-    # Drop the columns that are not ecosystem attributes or geometry identifiers
-    # since we only want to count the number of geometries with no ecosystem.
+    # Drop the columns that are not ecosystem attributes or geometry
+    # identifiers since we only want to count the number of geometries with no
+    # ecosystem.
     df = df_wide.drop(columns=["geometry_type", "comments", "ecosystem_type"])
     # Get number of rows where package_id and geographic_coverage_description
     # are the same.
@@ -1653,15 +1685,17 @@ def plot_long_data(df_long, output_dir):
             ax.xaxis.set_tick_params(labelbottom=False, labeltop=True, length=0)
             ax.set_xlim((0, max(counts) + 10))
             ax.set_ylim((0, len(names) * 0.9 - 0.2))
-            # Set whether axis ticks and gridlines are above or below most axes.
+            # Set whether axis ticks and gridlines are above or below most
+            # axes.
             ax.set_axisbelow(True)
             ax.grid(axis="x", color="#A8BAC4", lw=1.2)
             ax.spines["right"].set_visible(False)
             ax.spines["top"].set_visible(False)
             ax.spines["bottom"].set_visible(False)
             ax.spines["left"].set_lw(1.5)
-            # This capstyle determines the lines don't go beyond the limit we specified
-            # see: https://matplotlib.org/stable/api/_enums_api.html?highlight=capstyle#matplotlib._enums.CapStyle
+            # This capstyle determines the lines don't go beyond the limit we
+            # specified see: https://matplotlib.org/stable/api/_enums_api.html
+            # ?highlight=capstyle#matplotlib._enums.CapStyle
             ax.spines["left"].set_capstyle("butt")
             # Hide y labels
             ax.yaxis.set_visible(False)
@@ -1795,8 +1829,10 @@ if __name__ == "__main__":
     # # # Write df to tsv
     # # import csv
     # # output_dir = "/Users/csmith/Data/edi/"
-    # # df_long.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
-    #
+    # # df_long.to_csv(output_dir + "top_20_results.tsv", sep="\t",
+    # #                index=False,
+    # #                quoting=csv.QUOTE_ALL)
+    # #
     # # Summarize results
     # unique_ecosystems_by_type = get_number_of_unique_ecosystems(df_wide)
     # no_ecosystem = get_percent_of_geometries_with_no_ecosystem(df_wide)
