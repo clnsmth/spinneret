@@ -7,7 +7,7 @@ import glob
 from json import dumps
 import pytest
 from unittest.mock import patch
-from spinneret import eml, globalelu, utilities
+from spinneret import eml, geoenv, utilities
 
 
 
@@ -331,7 +331,7 @@ def test_eml_to_wte_json_wte_envelope(geocov):
     points = utilities._polygon_or_envelope_to_points(geometry)
     for point in points:
         try:
-            r = globalelu.identify(geometry=point, map_server="wte")
+            r = geoenv.identify(geometry=point, map_server="wte")
         except ConnectionError:
             r = None
         if r is not None:
@@ -358,7 +358,7 @@ def test_eml_to_wte_json_wte_envelope(geocov):
     points = utilities._polygon_or_envelope_to_points(geometry)
     for point in points:
         try:
-            r = globalelu.identify(geometry=point, map_server="wte")
+            r = geoenv.identify(geometry=point, map_server="wte")
         except ConnectionError:
             r = None
         if r is not None:

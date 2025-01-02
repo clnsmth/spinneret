@@ -1,7 +1,7 @@
 """Tests for the utilities module."""
 import json
 import pytest
-from spinneret import globalelu
+from spinneret import geoenv
 from spinneret import eml
 from spinneret.utilities import _polygon_or_envelope_to_points
 
@@ -72,13 +72,13 @@ def test_convert_point_to_envelope(geocov):
     """
     # Without a buffer
     point = geocov[7].to_esri_geometry()  # A point location  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
-    res = globalelu.convert_point_to_envelope(point)
+    res = geoenv.convert_point_to_envelope(point)
     assert isinstance(res, str)
     assert point == res
 
     # With a buffer
     point = geocov[7].to_esri_geometry()  # A point location  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
-    res = globalelu.convert_point_to_envelope(point, buffer=0.5)
+    res = geoenv.convert_point_to_envelope(point, buffer=0.5)
     assert isinstance(res, str)
     assert point != res
     point = json.loads(point)  # Convert to dict for comparison
@@ -91,7 +91,7 @@ def test_convert_point_to_envelope(geocov):
 
     # Other geometries are unchanged
     polygon = geocov[2].to_esri_geometry()  # Polygon  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
-    res = globalelu.convert_point_to_envelope(polygon)
+    res = geoenv.convert_point_to_envelope(polygon)
     assert isinstance(res, str)
     assert polygon == res
 
@@ -104,16 +104,16 @@ def test__get_geometry_type(geometry_shapes):
     """
     # Point
     geom = geometry_shapes["esriGeometryPoint"]
-    assert globalelu._get_geometry_type(geom) == "esriGeometryPoint"
+    assert geoenv._get_geometry_type(geom) == "esriGeometryPoint"
     # Polygon
     geom = geometry_shapes["esriGeometryPolygon"]
-    assert globalelu._get_geometry_type(geom) == "esriGeometryPolygon"
+    assert geoenv._get_geometry_type(geom) == "esriGeometryPolygon"
     # Envelope
     geom = geometry_shapes["esriGeometryEnvelope"]
-    assert globalelu._get_geometry_type(geom) == "esriGeometryEnvelope"
+    assert geoenv._get_geometry_type(geom) == "esriGeometryEnvelope"
     # Unsupported
     geom = geometry_shapes["unsupported"]
-    assert globalelu._get_geometry_type(geom) is None
+    assert geoenv._get_geometry_type(geom) is None
 
 
 def test__is_point_location():
@@ -132,7 +132,7 @@ def test__is_point_location():
             "spatialReference": {"<spatialReference>": "<value>"},
         }
     )
-    assert globalelu._is_point_location(point) is True
+    assert geoenv._is_point_location(point) is True
 
     # Envelope is an envelope
     envelope = json.dumps(
@@ -144,7 +144,7 @@ def test__is_point_location():
             "spatialReference": {"<spatialReference>": "<value>"},
         }
     )
-    assert globalelu._is_point_location(envelope) is False
+    assert geoenv._is_point_location(envelope) is False
 
     # Other geometry types are not analyzed and return False
     polygon = json.dumps(
@@ -164,7 +164,7 @@ def test__is_point_location():
             "spatialReference": {"<spatialReference>": "<value>"},
         }
     )
-    assert globalelu._is_point_location(polygon) is False
+    assert geoenv._is_point_location(polygon) is False
 
 
 def test__polygon_or_envelope_to_points(geocov):

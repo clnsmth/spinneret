@@ -5,7 +5,7 @@ import json
 import os
 from math import isnan
 from lxml import etree
-from spinneret.globalelu import Base, Location, identify, \
+from spinneret.geoenv import Base, Location, identify, \
     query
 from spinneret.utilities import _polygon_or_envelope_to_points
 
@@ -575,7 +575,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             #  rather than creating long drawnout code blocks and logic that
             #  is too much to keep in mind at once.
             #  Testing currently occurs in:
-            #  - test/test_globalelu.py::test_eml_to_wte_json_wte_envelope
+            #  - test/test_geoenv.py::test_eml_to_wte_json_wte_envelope
             if g.geom_type() == "envelope" or g.geom_type() == "polygon":
                 location.add_comments("WTE: Was queried.")
                 points = _polygon_or_envelope_to_points(
