@@ -42,3 +42,6 @@ patch_without_tag = true                    # patch release by default
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pylint.'MESSAGES.CONTROL']
+disable = "too-many-arguments,c-extension-no-member,invalid-name"

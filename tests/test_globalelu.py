@@ -29,9 +29,7 @@ def geometry_shapes():
                 "y": "<y>",
                 "z": "<z>",
                 "m": "<m>",
-                "spatialReference": {
-                    "<spatialReference>": "<value>"
-                }
+                "spatialReference": {"<spatialReference>": "<value>"},
             }
         ),
         "esriGeometryPolygon": json.dumps(
@@ -41,14 +39,14 @@ def geometry_shapes():
                 "rings": [
                     [
                         ["<x11>", "<y11>", "<z11>", "<m11>"],
-                        ["<x1N>", "<y1N>", "<z1N>", "<m1N>"]
+                        ["<x1N>", "<y1N>", "<z1N>", "<m1N>"],
                     ],
                     [
                         ["<xk1>", "<yk1>", "<zk1>", "<mk1>"],
-                        ["<xkM>", "<ykM>", "<zkM>", "<mkM>"]
-                    ]
+                        ["<xkM>", "<ykM>", "<zkM>", "<mkM>"],
+                    ],
                 ],
-                "spatialReference": {"<spatialReference>": "<value>"}
+                "spatialReference": {"<spatialReference>": "<value>"},
             }
         ),
         "esriGeometryEnvelope": json.dumps(
@@ -61,16 +59,10 @@ def geometry_shapes():
                 "zmax": "<zmax>",
                 "mmin": "<mmin>",
                 "mmax": "<mmax>",
-                "spatialReference": {
-                    "<spatialReference>": "<value>"
-                }
+                "spatialReference": {"<spatialReference>": "<value>"},
             }
         ),
-        "unsupported": json.dumps(
-            {
-                "unsupported": "<unsupported>"
-            }
-        )
+        "unsupported": json.dumps({"unsupported": "<unsupported>"}),
     }
     return geometries
 
@@ -107,12 +99,14 @@ def test_add_comments_location():
     The add_comments method should append a comment to the comments attribute
     of the Location class instance."""
     location = globalelu.Location()
-    assert location.data['comments'] == []
-    location.add_comments('This is a comment.')
-    assert location.data['comments'] == ['This is a comment.']
-    location.add_comments('This is another comment.')
-    assert location.data['comments'] == ['This is a comment.',
-                                         'This is another comment.']
+    assert location.data["comments"] == []
+    location.add_comments("This is a comment.")
+    assert location.data["comments"] == ["This is a comment."]
+    location.add_comments("This is another comment.")
+    assert location.data["comments"] == [
+        "This is a comment.",
+        "This is another comment.",
+    ]
 
 
 def test_add_ecosystem():
@@ -122,14 +116,14 @@ def test_add_ecosystem():
     class instance's data attribute."""
     location = globalelu.Location()
     ecosystem = globalelu.Ecosystem()
-    assert isinstance(location.data['ecosystem'], list)
-    assert len(location.data['ecosystem']) == 0
+    assert isinstance(location.data["ecosystem"], list)
+    assert len(location.data["ecosystem"]) == 0
     location.add_ecosystem([ecosystem.data])
-    assert isinstance(location.data['ecosystem'][0], dict)
-    assert len(location.data['ecosystem']) == 1
+    assert isinstance(location.data["ecosystem"][0], dict)
+    assert len(location.data["ecosystem"]) == 1
     location.add_ecosystem([ecosystem.data])
-    assert isinstance(location.data['ecosystem'][1], dict)
-    assert len(location.data['ecosystem']) == 2
+    assert isinstance(location.data["ecosystem"][1], dict)
+    assert len(location.data["ecosystem"]) == 2
 
 
 def test_Ecosystem_init():
@@ -139,11 +133,11 @@ def test_Ecosystem_init():
     a dictionary with a set of expected names and values for the ecosystem
     component of the data model."""
     ecosystem = globalelu.Ecosystem()
-    expected_attributes = ['source', 'version', 'comments', 'attributes']
+    expected_attributes = ["source", "version", "comments", "attributes"]
     assert isinstance(ecosystem.data, dict)
     for attribute in expected_attributes:
         assert attribute in ecosystem.data.keys()
-        if attribute == 'comments':
+        if attribute == "comments":
             assert isinstance(ecosystem.data[attribute], list)
         else:
             assert isinstance(ecosystem.data[attribute], None.__class__)
@@ -155,9 +149,9 @@ def test_set_source():
     The set_source method should set the source attribute of the Ecosystem
     class instance."""
     ecosystem = globalelu.Ecosystem()
-    assert ecosystem.data['source'] is None
-    ecosystem.set_source('ecu')
-    assert ecosystem.data['source'] == 'ecu'
+    assert ecosystem.data["source"] is None
+    ecosystem.set_source("ecu")
+    assert ecosystem.data["source"] == "ecu"
 
 
 def test_set_version():
@@ -166,9 +160,9 @@ def test_set_version():
     The set_version method should set the version attribute of the Ecosystem
     class instance."""
     ecosystem = globalelu.Ecosystem()
-    assert ecosystem.data['version'] is None
-    ecosystem.set_version('1.0')
-    assert ecosystem.data['version'] == '1.0'
+    assert ecosystem.data["version"] is None
+    ecosystem.set_version("1.0")
+    assert ecosystem.data["version"] == "1.0"
 
 
 def test_add_comments_ecosystem():
@@ -177,12 +171,14 @@ def test_add_comments_ecosystem():
     The add_comments method should append a comment to the comments
     attribute of the Ecosystem class instance."""
     ecosystem = globalelu.Ecosystem()
-    assert ecosystem.data['comments'] == []
-    ecosystem.add_comments('This is a comment.')
-    assert ecosystem.data['comments'] == ['This is a comment.']
-    ecosystem.add_comments('This is another comment.')
-    assert ecosystem.data['comments'] == ['This is a comment.',
-                                          'This is another comment.']
+    assert ecosystem.data["comments"] == []
+    ecosystem.add_comments("This is a comment.")
+    assert ecosystem.data["comments"] == ["This is a comment."]
+    ecosystem.add_comments("This is another comment.")
+    assert ecosystem.data["comments"] == [
+        "This is a comment.",
+        "This is another comment.",
+    ]
 
 
 def test_Attributes_init():
@@ -192,19 +188,19 @@ def test_Attributes_init():
     a dictionary configured with a set of source specific attributes. Each
     attribute should have a corresponding dictionary with label and annotation
     fields."""
-    for source in ['wte', 'ecu', 'emu']:
-        if source == 'wte':
-            attributes = globalelu.Attributes(source='wte')
+    for source in ["wte", "ecu", "emu"]:
+        if source == "wte":
+            attributes = globalelu.Attributes(source="wte")
             expected_attributes = [
-                "Temperatur",
-                "Moisture",
-                "Landcover",
-                "Landforms",
-                "Climate_Re",
-                "ClassName"
+                "Raster.Temp_Class",
+                "Raster.Moisture_C",
+                "Raster.LC_ClassNa",
+                "Raster.LF_ClassNa",
+                "Raster.Temp_Class",
+                "Raster.ClassName",
             ]
-        elif source == 'ecu':
-            attributes = globalelu.Attributes(source='ecu')
+        elif source == "ecu":
+            attributes = globalelu.Attributes(source="ecu")
             expected_attributes = [
                 "Slope",
                 "Sinuosity",
@@ -216,10 +212,10 @@ def test_Attributes_init():
                 "Marine Physical Environment",
                 "Turbidity",
                 "Chlorophyll",
-                "CSU_Descriptor"
+                "CSU_Descriptor",
             ]
-        elif source == 'emu':
-            attributes = globalelu.Attributes(source='emu')
+        elif source == "emu":
+            attributes = globalelu.Attributes(source="emu")
             expected_attributes = [
                 "OceanName",
                 "Depth",
@@ -229,18 +225,16 @@ def test_Attributes_init():
                 "Nitrate",
                 "Phosphate",
                 "Silicate",
-                "EMU_Descriptor"
+                "EMU_Descriptor",
             ]
         assert isinstance(attributes.data, dict)
         for attribute in expected_attributes:
             assert attribute in attributes.data.keys()
             assert isinstance(attributes.data[attribute], dict)
-            assert 'label' in attributes.data[attribute].keys()
-            assert 'annotation' in attributes.data[attribute].keys()
-            assert isinstance(attributes.data[attribute]['label'],
-                              None.__class__)
-            assert isinstance(attributes.data[attribute]['annotation'],
-                              None.__class__)
+            assert "label" in attributes.data[attribute].keys()
+            assert "annotation" in attributes.data[attribute].keys()
+            assert isinstance(attributes.data[attribute]["label"], None.__class__)
+            assert isinstance(attributes.data[attribute]["annotation"], None.__class__)
 
 
 def test_set_wte_attributes(geocov):
@@ -257,34 +251,29 @@ def test_set_wte_attributes(geocov):
     """
     # Successful query
     g = geocov[1]
-    r = globalelu.identify(
-        geometry=g.to_esri_geometry(),
-        map_server="wte"
-    )
-    raw_ecosystems = r.get_unique_ecosystems(source='wte')
+    r = globalelu.identify(geometry=g.to_esri_geometry(), map_server="wte")
+    raw_ecosystems = r.get_unique_ecosystems(source="wte")
     for raw_ecosystem in raw_ecosystems:
-        attributes = globalelu.Attributes('wte')
+        attributes = globalelu.Attributes("wte")
         attributes.set_wte_attributes(raw_ecosystem)
         assert len(attributes.data) == 6
         assert isinstance(attributes.data, dict)
-        assert attributes.data.keys() == globalelu.Attributes(
-            'wte').data.keys()
+        assert attributes.data.keys() == globalelu.Attributes("wte").data.keys()
         for attribute in attributes.data:
             assert isinstance(attributes.data[attribute], dict)
-            assert attributes.data[attribute].keys() == \
-                   globalelu.Attributes('wte').data[attribute].keys()
-            assert attributes.data[attribute]['label'] is not None
-            assert attributes.data[attribute]['annotation'] is not None
+            assert (
+                attributes.data[attribute].keys()
+                == globalelu.Attributes("wte").data[attribute].keys()
+            )
+            assert attributes.data[attribute]["label"] is not None
+            assert attributes.data[attribute]["annotation"] is not None
     # Unsuccessful query
     g = geocov[2]
-    r = globalelu.identify(
-        geometry=g.to_esri_geometry(),
-        map_server="wte"
-    )
-    raw_ecosystems = r.get_unique_ecosystems(source='wte')
-    attributes = globalelu.Attributes('wte')
+    r = globalelu.identify(geometry=g.to_esri_geometry(), map_server="wte")
+    raw_ecosystems = r.get_unique_ecosystems(source="wte")
+    attributes = globalelu.Attributes("wte")
     attributes.set_wte_attributes(raw_ecosystems)
-    assert attributes.data == globalelu.Attributes('wte').data
+    assert attributes.data == globalelu.Attributes("wte").data
 
 
 def test_set_ecu_attributes(geocov):
@@ -301,34 +290,29 @@ def test_set_ecu_attributes(geocov):
     """
     # Successful query
     g = geocov[8]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="ecu"
-    )
-    raw_ecosystems = r.get_unique_ecosystems(source='ecu')
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="ecu")
+    raw_ecosystems = r.get_unique_ecosystems(source="ecu")
     for raw_ecosystem in raw_ecosystems:
-        attributes = globalelu.Attributes('ecu')
+        attributes = globalelu.Attributes("ecu")
         attributes.set_ecu_attributes(raw_ecosystem)
         assert isinstance(attributes.data, dict)
         assert len(attributes.data) == 11
-        assert attributes.data.keys() == globalelu.Attributes(
-            'ecu').data.keys()
+        assert attributes.data.keys() == globalelu.Attributes("ecu").data.keys()
         for attribute in attributes.data:
             assert isinstance(attributes.data[attribute], dict)
-            assert attributes.data[attribute].keys() == \
-                   globalelu.Attributes('ecu').data[attribute].keys()
-            assert attributes.data[attribute]['label'] is not None
-            assert attributes.data[attribute]['annotation'] is not None
+            assert (
+                attributes.data[attribute].keys()
+                == globalelu.Attributes("ecu").data[attribute].keys()
+            )
+            assert attributes.data[attribute]["label"] is not None
+            assert attributes.data[attribute]["annotation"] is not None
     # Unsuccessful query
     g = geocov[1]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="ecu"
-    )
-    raw_ecosystems = r.get_unique_ecosystems(source='ecu')
-    attributes = globalelu.Attributes('ecu')
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="ecu")
+    raw_ecosystems = r.get_unique_ecosystems(source="ecu")
+    attributes = globalelu.Attributes("ecu")
     attributes.set_ecu_attributes(raw_ecosystems)
-    assert attributes.data == globalelu.Attributes('ecu').data
+    assert attributes.data == globalelu.Attributes("ecu").data
 
 
 def test_set_emu_attributes(geocov):
@@ -345,34 +329,29 @@ def test_set_emu_attributes(geocov):
     """
     # Successful query
     g = geocov[11]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
-    raw_ecosystems = r.get_unique_ecosystems(source='emu')
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
+    raw_ecosystems = r.get_unique_ecosystems(source="emu")
     for raw_ecosystem in raw_ecosystems:
-        attributes = globalelu.Attributes('emu')
+        attributes = globalelu.Attributes("emu")
         attributes.set_emu_attributes(raw_ecosystem)
         assert isinstance(attributes.data, dict)
         assert len(attributes.data) == 9
-        assert attributes.data.keys() == globalelu.Attributes(
-            'emu').data.keys()
+        assert attributes.data.keys() == globalelu.Attributes("emu").data.keys()
         for attribute in attributes.data:
             assert isinstance(attributes.data[attribute], dict)
-            assert attributes.data[attribute].keys() == \
-                   globalelu.Attributes('emu').data[attribute].keys()
-            assert attributes.data[attribute]['label'] is not None
-            assert attributes.data[attribute]['annotation'] is not None
+            assert (
+                attributes.data[attribute].keys()
+                == globalelu.Attributes("emu").data[attribute].keys()
+            )
+            assert attributes.data[attribute]["label"] is not None
+            assert attributes.data[attribute]["annotation"] is not None
     # Unsuccessful query
     g = geocov[0]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
-    raw_ecosystems = r.get_unique_ecosystems(source='emu')
-    attributes = globalelu.Attributes('emu')
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
+    raw_ecosystems = r.get_unique_ecosystems(source="emu")
+    attributes = globalelu.Attributes("emu")
     attributes.set_emu_attributes(raw_ecosystems)
-    assert attributes.data == globalelu.Attributes('emu').data
+    assert attributes.data == globalelu.Attributes("emu").data
 
 
 def test_add_attributes():
@@ -383,10 +362,10 @@ def test_add_attributes():
     Attributes class instance is the default or whether it is set with
     attributes from an set_attributes method."""
     ecosystem = globalelu.Ecosystem()
-    assert isinstance(ecosystem.data['attributes'], None.__class__)
-    attributes = globalelu.Attributes('ecu')
+    assert isinstance(ecosystem.data["attributes"], None.__class__)
+    attributes = globalelu.Attributes("ecu")
     ecosystem.add_attributes(attributes)
-    assert isinstance(ecosystem.data['attributes'], dict)
+    assert isinstance(ecosystem.data["attributes"], dict)
 
 
 def test_identify(geocov):
@@ -403,10 +382,7 @@ def test_identify(geocov):
     """
     # Run an identify operation on the WTE server with a set of geographic
     # coverages known to resolve to a WTE ecosystem.
-    geocov_success = [
-        geocov[0],  # An envelope on land
-        geocov[1]  # A point on land
-    ]
+    geocov_success = [geocov[0], geocov[1]]  # An envelope on land  # A point on land
     for g in geocov_success:
         r = globalelu.identify(
             geometry=g.to_esri_geometry(),
@@ -424,13 +400,10 @@ def test_identify(geocov):
         geocov[2],  # A polygon
         geocov[4],  # A point over the ocean
         geocov[5],  # A point over a freshwater body
-        geocov[6]  # A point outside the WTE map service extent
+        geocov[6],  # A point outside the WTE map service extent
     ]
     for g in geocov_fail:
-        r = globalelu.identify(
-            geometry=g.to_esri_geometry(),
-            map_server="wte"
-        )
+        r = globalelu.identify(geometry=g.to_esri_geometry(), map_server="wte")
         assert r is not None
         assert isinstance(r, globalelu.Response)
         assert r.has_ecosystem(source="wte") is False
@@ -449,64 +422,42 @@ def test_query(geocov):
     """
     # Query the ECU server with a geographic coverage known to resolve to one
     # or more ECUs.
-    geocov_success = [
-        geocov[3],  # Polygon
-        geocov[7],  # Point
-        geocov[8]  # Envelope
-    ]
+    geocov_success = [geocov[3], geocov[7], geocov[8]]  # Polygon  # Point  # Envelope
     for g in geocov_success:
-        r = globalelu.query(
-            geometry=g.to_esri_geometry(),
-            map_server="ecu"
-        )
+        r = globalelu.query(geometry=g.to_esri_geometry(), map_server="ecu")
         assert r is not None
         expected_attributes = "CSU_Descriptor"  # ECU has one attribute
-        attributes = r.get_attributes([expected_attributes])[
-            expected_attributes]
+        attributes = r.get_attributes([expected_attributes])[expected_attributes]
         assert isinstance(attributes, list)
         assert isinstance(attributes[0], str)
         assert len(attributes[0]) > 0
     # Query the ECU server with a geographic coverage that is known to
     # not resolve to one or more ECUs.
     g = geocov[0]  # Envelope on land
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="ecu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="ecu")
     assert r is not None
-    assert r.has_ecosystem('ecu') is False
+    assert r.has_ecosystem("ecu") is False
 
     # Query the EMU server with a geographic coverage known to resolve to one
     # or more EMUs.
     # TODO This test can be combined with the one above, in a for loop, because
     #  the test structures are identical.
-    geocov_success = [
-        geocov[4],  # Point
-        geocov[9],  # Envelope
-        geocov[10]  # Polygon
-    ]
+    geocov_success = [geocov[4], geocov[9], geocov[10]]  # Point  # Envelope  # Polygon
     for g in geocov_success:
-        r = globalelu.query(
-            geometry=g.to_esri_geometry(),
-            map_server="emu"
-        )
+        r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
         assert r is not None
         r.convert_codes_to_values(source="emu")
         for expected_attribute in ["Name_2018", "OceanName"]:
-            attributes = r.get_attributes([expected_attribute])[
-                expected_attribute]
+            attributes = r.get_attributes([expected_attribute])[expected_attribute]
             assert isinstance(attributes, list)
             assert isinstance(attributes[0], str)
             assert len(attributes[0]) > 0
     # Query the EMU server with a geographic coverage that is known to
     # not resolve to one or more ECUs.
     g = geocov[0]  # Envelope on land
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
     assert r is not None
-    assert r.has_ecosystem('emu') is False
+    assert r.has_ecosystem("emu") is False
 
 
 def test_get_attributes(geocov):
@@ -520,7 +471,7 @@ def test_get_attributes(geocov):
         geometry=geocov[0].to_esri_geometry(),
         map_server="wte",
     )
-    attributes = ["Landforms", "Landcover", "Climate_Re"]
+    attributes = ["Raster.LF_ClassNa", "Raster.LC_ClassNa", "Raster.Temp_Class"]
     res = r.get_attributes(attributes)
     assert isinstance(res, dict)
     for a in attributes:
@@ -623,50 +574,32 @@ def test_has_ecosystem(geocov):
     """
     # Geometries over land areas have a WTE ecosystem
     g = geocov[1]
-    r = globalelu.identify(
-        geometry=g.to_esri_geometry(),
-        map_server="wte"
-    )
-    assert r.has_ecosystem('wte') is True
+    r = globalelu.identify(geometry=g.to_esri_geometry(), map_server="wte")
+    assert r.has_ecosystem("wte") is True
     # Geometries over water bodies, or outside the WTE area, don't have a WTE
     # ecosystem.
     geocov_ecu = [geocov[4], geocov[6]]
     for g in geocov_ecu:
-        r = globalelu.identify(
-            geometry=g.to_esri_geometry(),
-            map_server="wte"
-        )
-        assert r.has_ecosystem('wte') is False
+        r = globalelu.identify(geometry=g.to_esri_geometry(), map_server="wte")
+        assert r.has_ecosystem("wte") is False
 
     # Geometries near the coast have a ECU ecosystem
     g = geocov[7]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="ecu"
-    )
-    assert r.has_ecosystem('ecu') is True
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="ecu")
+    assert r.has_ecosystem("ecu") is True
     # Geometries far from the coast don't have a ECU ecosystem
     g = geocov[0]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="ecu"
-    )
-    assert r.has_ecosystem('ecu') is False
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="ecu")
+    assert r.has_ecosystem("ecu") is False
 
     # Geometries on the ocean have an EMU ecosystem
     g = geocov[4]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
-    assert r.has_ecosystem('emu') is True
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
+    assert r.has_ecosystem("emu") is True
     # Geometries on land don't have an EMU ecosystem
     g = geocov[0]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
-    assert r.has_ecosystem('emu') is False
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
+    assert r.has_ecosystem("emu") is False
 
 
 def test_get_wte_ecosystems(geocov):
@@ -677,19 +610,13 @@ def test_get_wte_ecosystems(geocov):
     """
     # Successful query
     g = geocov[1]
-    r = globalelu.identify(
-        geometry=g.to_esri_geometry(),
-        map_server="wte"
-    )
+    r = globalelu.identify(geometry=g.to_esri_geometry(), map_server="wte")
     ecosystems = r.get_wte_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) > 0
     # Unsuccessful query
     g = geocov[2]
-    r = globalelu.identify(
-        geometry=g.to_esri_geometry(),
-        map_server="wte"
-    )
+    r = globalelu.identify(geometry=g.to_esri_geometry(), map_server="wte")
     ecosystems = r.get_wte_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 0
@@ -703,19 +630,13 @@ def test_get_ecu_ecosystems(geocov):
     """
     # Successful query
     g = geocov[8]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="ecu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="ecu")
     ecosystems = r.get_ecu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) > 0
     # Unsuccessful query
     g = geocov[1]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="ecu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="ecu")
     ecosystems = r.get_ecu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 0
@@ -729,36 +650,24 @@ def test_get_emu_ecosystems(geocov):
     """
     # A series of successful queries
     g = geocov[11]  # Point
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
     ecosystems = r.get_emu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 1
     g = geocov[9]  # Envelope
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
     ecosystems = r.get_emu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 4
     g = geocov[10]  # Polygon
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
     ecosystems = r.get_emu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 7
 
     # Unsuccessful query
     g = geocov[1]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
     ecosystems = r.get_emu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 0
@@ -780,35 +689,25 @@ def test_get_unique_ecosystems(geocov):
     # Test a successful response from the WTE server identify operation (i.e.
     # a response an ecosystem).
     g = geocov[1]
-    r = globalelu.identify(
-        geometry=g.to_esri_geometry(),
-        map_server="wte"
-    )
-    unique_ecosystems = r.get_unique_ecosystems(source='wte')
+    r = globalelu.identify(geometry=g.to_esri_geometry(), map_server="wte")
+    unique_ecosystems = r.get_unique_ecosystems(source="wte")
     assert isinstance(unique_ecosystems, list)
     assert len(unique_ecosystems) == len(r.json.get("results"))
     assert len(unique_ecosystems) == 1
     # Test an unsuccessful response from the wte server identify operation
     # (i.e. a response that contains no ecosystem).
     g = geocov[2]
-    r = globalelu.identify(
-        geometry=g.to_esri_geometry(),
-        map_server="wte"
-    )
-    unique_ecosystems = r.get_unique_ecosystems(source='wte')
+    r = globalelu.identify(geometry=g.to_esri_geometry(), map_server="wte")
+    unique_ecosystems = r.get_unique_ecosystems(source="wte")
     assert isinstance(unique_ecosystems, list)
     assert len(unique_ecosystems) == 0
 
     # Test a successful response from the ECU server query (i.e. a response
     # that contains one or more ecosystems).
     g = geocov[8]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="ecu"
-    )
-    full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])[
-        "CSU_Descriptor"]
-    unique_ecosystems = r.get_unique_ecosystems(source='ecu')
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="ecu")
+    full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])["CSU_Descriptor"]
+    unique_ecosystems = r.get_unique_ecosystems(source="ecu")
     assert isinstance(unique_ecosystems, list)
     assert len(full_list_of_ecosystems) == 123
     assert len(unique_ecosystems) == 34
@@ -816,13 +715,9 @@ def test_get_unique_ecosystems(geocov):
     # Test an unsuccessful response from the ECU server query (i.e. a response
     # that contains no ecosystems).
     g = geocov[1]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="ecu"
-    )
-    full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])[
-        "CSU_Descriptor"]
-    unique_ecosystems = r.get_unique_ecosystems(source='ecu')
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="ecu")
+    full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])["CSU_Descriptor"]
+    unique_ecosystems = r.get_unique_ecosystems(source="ecu")
     assert isinstance(unique_ecosystems, list)
     assert len(full_list_of_ecosystems) == 0
     assert len(unique_ecosystems) == 0
@@ -831,15 +726,12 @@ def test_get_unique_ecosystems(geocov):
     # Test a successful response from the EMU server query (i.e. a response
     # that contains one or more ecosystems).
     g = geocov[11]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
     # FIXME? This test differs from those for WTE and ECU because the get
     #  unique ecosystems operation is wrapped in two. See implementation for
     #  details.
     # full_list_of_ecosystems = r.json.get("features")
-    unique_ecosystems = r.get_unique_ecosystems(source='emu')
+    unique_ecosystems = r.get_unique_ecosystems(source="emu")
     assert isinstance(unique_ecosystems, list)
     # assert len(full_list_of_ecosystems) == 1
     assert len(unique_ecosystems) == 1
@@ -847,13 +739,10 @@ def test_get_unique_ecosystems(geocov):
     # Test an unsuccessful response from the EMU server query (i.e. a response
     # that contains no ecosystems).
     g = geocov[0]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
     # full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])[
     #     "CSU_Descriptor"]
-    unique_ecosystems = r.get_unique_ecosystems(source='emu')
+    unique_ecosystems = r.get_unique_ecosystems(source="emu")
     assert isinstance(unique_ecosystems, list)
     # assert len(full_list_of_ecosystems) == 0
     assert len(unique_ecosystems) == 0
@@ -880,8 +769,7 @@ def test_eml_to_wte_json():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Each EML file in the src/spinneret/data/eml/ directory should be
         # converted to a json file and saved to an output directory.
-        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
-                                  output_dir=tmpdir)
+        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/", output_dir=tmpdir)
         fpaths_out = os.listdir(tmpdir)
         for f in fnames_in:
             assert f + ".json" in fpaths_out
@@ -892,8 +780,7 @@ def test_eml_to_wte_json():
         # file.
         os.remove(join(tmpdir, fnames_in[0] + ".json"))
         assert exists(join(tmpdir, fnames_in[0] + ".json")) is False
-        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
-                                  output_dir=tmpdir)
+        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/", output_dir=tmpdir)
         assert exists(join(tmpdir, fnames_in[0] + ".json")) is True
 
         # Additionally, existing json files should not be overwritten
@@ -903,14 +790,12 @@ def test_eml_to_wte_json():
         for f in fnames_in:
             dates[f] = getmtime(join(tmpdir, f + ".json"))
         # Run the function again without overwriting existing json files
-        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/",
-                                  output_dir=tmpdir)
+        globalelu.eml_to_wte_json(eml_dir="src/spinneret/data/eml/", output_dir=tmpdir)
         for f in fnames_in:
             assert getmtime(join(tmpdir, f + ".json")) == dates[f]
         # Run the function again with overwriting existing json files
         globalelu.eml_to_wte_json(
-            eml_dir="src/spinneret/data/eml/", output_dir=tmpdir,
-            overwrite=True
+            eml_dir="src/spinneret/data/eml/", output_dir=tmpdir, overwrite=True
         )
         for f in fnames_in:
             assert getmtime(join(tmpdir, f + ".json")) != dates[f]
@@ -928,10 +813,7 @@ def test_eml_to_wte_json_wte_envelope(geocov):
     points = globalelu._polygon_or_envelope_to_points(geometry)
     for point in points:
         try:
-            r = globalelu.identify(
-                geometry=point,
-                map_server="wte"
-            )
+            r = globalelu.identify(geometry=point, map_server="wte")
         except ConnectionError:
             r = None
         if r is not None:
@@ -958,10 +840,7 @@ def test_eml_to_wte_json_wte_envelope(geocov):
     points = globalelu._polygon_or_envelope_to_points(geometry)
     for point in points:
         try:
-            r = globalelu.identify(
-                geometry=point,
-                map_server="wte"
-            )
+            r = globalelu.identify(geometry=point, map_server="wte")
         except ConnectionError:
             r = None
         if r is not None:
@@ -987,10 +866,7 @@ def test_convert_codes_to_values(geocov):
     value equivalents."""
     # Test a successful response from the EMU server query operation.
     g = geocov[4]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
     # Codes are numeric values in the response object initially.
     for feature in r.json.get("features"):
         assert isinstance(feature.get("attributes").get("Name_2018"), int)
@@ -1003,10 +879,7 @@ def test_convert_codes_to_values(geocov):
 
     # Test an unsuccessful response from the EMU server query operation.
     g = geocov[0]  # Location on land
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
     # The response object's features list is empty and therefore a no-op.
     assert isinstance(r.json.get("features"), list)
     assert len(r.json.get("features")) == 0
@@ -1035,10 +908,7 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     """
     # A set of tests on a point location with z values
     g = geocov[11]
-    r = globalelu.query(
-        geometry=g.to_esri_geometry(),
-        map_server="emu"
-    )
+    r = globalelu.query(geometry=g.to_esri_geometry(), map_server="emu")
 
     # Single z value within EMU returns one EMU
     geometry = json.loads(r.geometry)
@@ -1050,8 +920,7 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     assert isinstance(ecosystems, list)
     for ecosystem in ecosystems:
         assert isinstance(ecosystem, str)
-        assert json.loads(ecosystem)['attributes'][
-                   'Name_2018'] in expected_ecosystems
+        assert json.loads(ecosystem)["attributes"]["Name_2018"] in expected_ecosystems
     assert len(ecosystems) == 1
 
     # Single z value on the bounder between two EMUs returns two EMUs
@@ -1064,8 +933,7 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     assert isinstance(ecosystems, list)
     for ecosystem in ecosystems:
         assert isinstance(ecosystem, str)
-        assert json.loads(ecosystem)['attributes'][
-                   'Name_2018'] in expected_ecosystems
+        assert json.loads(ecosystem)["attributes"]["Name_2018"] in expected_ecosystems
     assert len(ecosystems) == 2
 
     # Range of z values each intersecting with the midpoints of two
@@ -1079,8 +947,7 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     assert isinstance(ecosystems, list)
     for ecosystem in ecosystems:
         assert isinstance(ecosystem, str)
-        assert json.loads(ecosystem)['attributes'][
-                   'Name_2018'] in expected_ecosystems
+        assert json.loads(ecosystem)["attributes"]["Name_2018"] in expected_ecosystems
     assert len(ecosystems) == 2
 
     # Range of z values on boundaries of two adjacent EMUs returns 3 EMUs
@@ -1093,8 +960,7 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     assert isinstance(ecosystems, list)
     for ecosystem in ecosystems:
         assert isinstance(ecosystem, str)
-        assert json.loads(ecosystem)['attributes'][
-                   'Name_2018'] in expected_ecosystems
+        assert json.loads(ecosystem)["attributes"]["Name_2018"] in expected_ecosystems
     assert len(ecosystems) == 3
 
     # No z values returns all EMUs.
@@ -1108,8 +974,7 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     assert isinstance(ecosystems, list)
     for ecosystem in ecosystems:
         assert isinstance(ecosystem, str)
-        assert json.loads(ecosystem)['attributes'][
-                   'Name_2018'] in expected_ecosystems
+        assert json.loads(ecosystem)["attributes"]["Name_2018"] in expected_ecosystems
     assert len(ecosystems) == 6
 
 
@@ -1146,9 +1011,7 @@ def test__is_point_location():
             "ymin": 42.48,
             "xmax": -72.22,
             "ymax": 42.48,
-            "spatialReference": {
-                "<spatialReference>": "<value>"
-            }
+            "spatialReference": {"<spatialReference>": "<value>"},
         }
     )
     assert globalelu._is_point_location(point) is True
@@ -1160,9 +1023,7 @@ def test__is_point_location():
             "ymin": 39.804,
             "xmax": -120.830,
             "ymax": 40.441,
-            "spatialReference": {
-                "<spatialReference>": "<value>"
-            }
+            "spatialReference": {"<spatialReference>": "<value>"},
         }
     )
     assert globalelu._is_point_location(envelope) is False
@@ -1175,14 +1036,14 @@ def test__is_point_location():
             "rings": [
                 [
                     ["<x11>", "<y11>", "<z11>", "<m11>"],
-                    ["<x1N>", "<y1N>", "<z1N>", "<m1N>"]
+                    ["<x1N>", "<y1N>", "<z1N>", "<m1N>"],
                 ],
                 [
                     ["<xk1>", "<yk1>", "<zk1>", "<mk1>"],
-                    ["<xkM>", "<ykM>", "<zkM>", "<mkM>"]
-                ]
+                    ["<xkM>", "<ykM>", "<zkM>", "<mkM>"],
+                ],
             ],
-            "spatialReference": {"<spatialReference>": "<value>"}
+            "spatialReference": {"<spatialReference>": "<value>"},
         }
     )
     assert globalelu._is_point_location(polygon) is False
@@ -1209,7 +1070,7 @@ def test__polygon_or_envelope_to_points(geocov):
             geometry_dict["xmin"],
             geometry_dict["ymin"],
             geometry_dict["xmax"],
-            geometry_dict["ymax"]
+            geometry_dict["ymax"],
         ]
     )
     for i in [0, 1, 2, 3]:
@@ -1251,7 +1112,9 @@ def test__polygon_or_envelope_to_points(geocov):
     assert len(points) == 4
     # First 3 points equal the vertices of the polygon
     geometry_dict = json.loads(geometry)
-    geometry_corners = set([item for sublist in geometry_dict["rings"][0] for item in sublist])
+    geometry_corners = set(
+        [item for sublist in geometry_dict["rings"][0] for item in sublist]
+    )
     for i in [0, 1, 2]:
         assert isinstance(points[i], str)
         point = json.loads(points[i])
@@ -1279,4 +1142,3 @@ def test__polygon_or_envelope_to_points(geocov):
     assert point["ymin"] > min(ybounds) and point["ymin"] < max(ybounds)
     # Spatial reference and z values are not modified by this method
     assert point["spatialReference"] == geometry_dict["spatialReference"]
-

@@ -50,7 +50,7 @@ def test_to_esri_geometry(geocov):
             "ymax": 40.441,
             "zmin": None,
             "zmax": None,
-            "spatialReference": {"wkid": 4326}
+            "spatialReference": {"wkid": 4326},
         }
     )
 
@@ -64,7 +64,7 @@ def test_to_esri_geometry(geocov):
             "ymax": 42.48,
             "zmin": None,
             "zmax": None,
-            "spatialReference": {"wkid": 4326}
+            "spatialReference": {"wkid": 4326},
         }
     )
 
@@ -78,7 +78,7 @@ def test_to_esri_geometry(geocov):
             "ymax": 21.125,
             "zmin": -15.0,
             "zmax": 0.0,
-            "spatialReference": {"wkid": 4326}
+            "spatialReference": {"wkid": 4326},
         }
     )
 
@@ -87,12 +87,22 @@ def test_to_esri_geometry(geocov):
     assert g.to_esri_geometry() == dumps(
         {
             "rings": [
-                [[-123.7976226, 39.3085666], [-123.8222818, 39.3141049],
-                 [-123.8166231, 39.2943269], [-123.7976226, 39.3085666]],
-                [[-123.8078563, 39.3068951], [-123.8163387, 39.3086898],
-                 [-123.813222, 39.3022756], [-123.8078177, 39.3068354],
-                 [-123.8078563, 39.3068951]]
-            ], "spatialReference": {"wkid": 4326}}
+                [
+                    [-123.7976226, 39.3085666],
+                    [-123.8222818, 39.3141049],
+                    [-123.8166231, 39.2943269],
+                    [-123.7976226, 39.3085666],
+                ],
+                [
+                    [-123.8078563, 39.3068951],
+                    [-123.8163387, 39.3086898],
+                    [-123.813222, 39.3022756],
+                    [-123.8078177, 39.3068354],
+                    [-123.8078563, 39.3068951],
+                ],
+            ],
+            "spatialReference": {"wkid": 4326},
+        }
     )
 
 
@@ -114,8 +124,7 @@ def test_west(geocov):
     should be updated whenever that files geographicCoverage changes.
     """
     assert isinstance(geocov[0].west(), float)
-    geocov[0].gc.remove(
-        geocov[0].gc.find(".//westBoundingCoordinate").getparent())
+    geocov[0].gc.remove(geocov[0].gc.find(".//westBoundingCoordinate").getparent())
     assert geocov[0].west() is None
 
 
@@ -126,8 +135,7 @@ def test_east(geocov):
     should be updated whenever that files geographicCoverage changes.
     """
     assert isinstance(geocov[0].east(), float)
-    geocov[0].gc.remove(
-        geocov[0].gc.find(".//eastBoundingCoordinate").getparent())
+    geocov[0].gc.remove(geocov[0].gc.find(".//eastBoundingCoordinate").getparent())
     assert geocov[0].east() is None
 
 
@@ -138,8 +146,7 @@ def test_north(geocov):
     should be updated whenever that files geographicCoverage changes.
     """
     assert isinstance(geocov[0].north(), float)
-    geocov[0].gc.remove(
-        geocov[0].gc.find(".//northBoundingCoordinate").getparent())
+    geocov[0].gc.remove(geocov[0].gc.find(".//northBoundingCoordinate").getparent())
     assert geocov[0].north() is None
 
 
@@ -150,8 +157,7 @@ def test_south(geocov):
     should be updated whenever that files geographicCoverage changes.
     """
     assert isinstance(geocov[0].south(), float)
-    geocov[0].gc.remove(
-        geocov[0].gc.find(".//southBoundingCoordinate").getparent())
+    geocov[0].gc.remove(geocov[0].gc.find(".//southBoundingCoordinate").getparent())
     assert geocov[0].south() is None
 
 
@@ -162,8 +168,7 @@ def test_outer_gring(geocov):
     should be updated whenever that files geographicCoverage changes.
     """
     assert isinstance(geocov[2].outer_gring(), str)
-    geocov[2].gc.remove(
-        geocov[2].gc.find(".//datasetGPolygonOuterGRing").getparent())
+    geocov[2].gc.remove(geocov[2].gc.find(".//datasetGPolygonOuterGRing").getparent())
     assert geocov[2].outer_gring() is None
 
 
@@ -186,19 +191,20 @@ def test_altitude_minimum(geocov):
     assert g.altitude_minimum() == -15
     # The _convert_to_meters method should be called when the to_meters
     # argument is True.
-    with patch('spinneret.eml.GeographicCoverage._convert_to_meters') as mock__convert_to_meters:
+    with patch(
+        "spinneret.eml.GeographicCoverage._convert_to_meters"
+    ) as mock__convert_to_meters:
         g.altitude_minimum(to_meters=True)
         mock__convert_to_meters.assert_called_once()
     # The _convert_to_meters method should not be called when the to_meters
     # argument is False.
     with patch(
-            'spinneret.eml.GeographicCoverage._convert_to_meters') as mock__convert_to_meters:
+        "spinneret.eml.GeographicCoverage._convert_to_meters"
+    ) as mock__convert_to_meters:
         g.altitude_minimum(to_meters=False)
         mock__convert_to_meters.assert_not_called()
     # Returns None when no altitudeMinimum element is present.
-    g.gc.remove(
-        g.gc.find(".//altitudeMinimum").getparent()
-    )
+    g.gc.remove(g.gc.find(".//altitudeMinimum").getparent())
     assert g.altitude_minimum() is None
 
 
@@ -209,29 +215,27 @@ def test_altitude_maximum(geocov):
     # The _convert_to_meters method should be called when the to_meters
     # argument is True.
     with patch(
-            'spinneret.eml.GeographicCoverage._convert_to_meters') as mock__convert_to_meters:
+        "spinneret.eml.GeographicCoverage._convert_to_meters"
+    ) as mock__convert_to_meters:
         g.altitude_maximum(to_meters=True)
         mock__convert_to_meters.assert_called_once()
     # The _convert_to_meters method should not be called when the to_meters
     # argument is False.
     with patch(
-            'spinneret.eml.GeographicCoverage._convert_to_meters') as mock__convert_to_meters:
+        "spinneret.eml.GeographicCoverage._convert_to_meters"
+    ) as mock__convert_to_meters:
         g.altitude_maximum(to_meters=False)
         mock__convert_to_meters.assert_not_called()
     # Returns None when no altitudeMinimum element is present.
-    g.gc.remove(
-        g.gc.find(".//altitudeMaximum").getparent()
-    )
+    g.gc.remove(g.gc.find(".//altitudeMaximum").getparent())
     assert g.altitude_maximum() is None
 
 
 def test_altitude_units(geocov):
     g = geocov[11]  # A geographic coverage with altitude in units of feet
     assert isinstance(g.altitude_units(), str)
-    assert g.altitude_units() == 'meter'
-    g.gc.remove(
-        g.gc.find(".//altitudeUnits").getparent()
-    )
+    assert g.altitude_units() == "meter"
+    g.gc.remove(g.gc.find(".//altitudeUnits").getparent())
     assert g.altitude_units() is None
 
 

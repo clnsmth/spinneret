@@ -93,7 +93,6 @@ class Location:
         else:
             self.data["comments"].append(comments)
 
-
     def add_ecosystem(self, ecosystem):
         # TODO should not add anything if is an empty list or None,?
         for item in ecosystem:
@@ -128,12 +127,12 @@ class Attributes:
     def __init__(self, source):
         if source == "wte":
             self.data = {
-                "Temperatur": {"label": None, "annotation": None},
-                "Moisture": {"label": None, "annotation": None},
-                "Landcover": {"label": None, "annotation": None},
-                "Landforms": {"label": None, "annotation": None},
-                "Climate_Re": {"label": None, "annotation": None},
-                "ClassName": {"label": None, "annotation": None},
+                "Raster.Temp_Class": {"label": None, "annotation": None},
+                "Raster.Moisture_C": {"label": None, "annotation": None},
+                "Raster.LC_ClassNa": {"label": None, "annotation": None},
+                "Raster.LF_ClassNa": {"label": None, "annotation": None},
+                "Raster.Temp_Moist": {"label": None, "annotation": None},
+                "Raster.ClassName": {"label": None, "annotation": None},
             }
         elif source == "ecu":
             self.data = {
@@ -147,7 +146,7 @@ class Attributes:
                 "Marine Physical Environment": {"label": None, "annotation": None},
                 "Turbidity": {"label": None, "annotation": None},
                 "Chlorophyll": {"label": None, "annotation": None},
-                "CSU_Descriptor": {"label": None, "annotation": None}
+                "CSU_Descriptor": {"label": None, "annotation": None},
             }
         elif source == "emu":
             self.data = {
@@ -159,7 +158,7 @@ class Attributes:
                 "Nitrate": {"label": None, "annotation": None},
                 "Phosphate": {"label": None, "annotation": None},
                 "Silicate": {"label": None, "annotation": None},
-                "EMU_Descriptor": {"label": None, "annotation": None}
+                "EMU_Descriptor": {"label": None, "annotation": None},
             }
 
     def set_attributes(self, unique_ecosystem_attributes, source):
@@ -189,10 +188,7 @@ class Attributes:
                     + self.data["Moisture"].get("annotation")
                     + ")"
                 )
-                self.data[attribute] = {
-                    "label": label,
-                    "annotation": annotation
-                }
+                self.data[attribute] = {"label": label, "annotation": annotation}
             elif attribute == "ClassName":
                 # ClassName is a composite class composed of Temperatur,
                 # Moisture, Landcover, and Landforms classes.
@@ -207,20 +203,16 @@ class Attributes:
                     + "|"
                     + self.data["Landforms"].get("annotation")
                 )
-                self.data[attribute] = {
-                    "label": label,
-                    "annotation": annotation
-                }
+                self.data[attribute] = {"label": label, "annotation": annotation}
             else:
                 # All other classes are single classes, which resolve to
                 # terms listed in the SSSOM file, and which compose the
                 # composite classes of Climate_Re and ClassName.
                 self.data[attribute] = {
                     "label": label,
-                    "annotation": self.get_annotation(label, source="wte")
+                    "annotation": self.get_annotation(label, source="wte"),
                 }
         self.data = self.data
-
 
     def set_ecu_attributes(self, unique_ecosystem_attributes):
         """Set attributes for ECU.
@@ -267,7 +259,7 @@ class Attributes:
         CSU_Descriptor_annotation = "|".join(CSU_Descriptor_annotation)
         self.data["CSU_Descriptor"] = {
             "label": CSU_Descriptor,
-            "annotation": CSU_Descriptor_annotation
+            "annotation": CSU_Descriptor_annotation,
         }
         # Append to results
         self.data = self.data
@@ -297,7 +289,7 @@ class Attributes:
             label = ecosystem.get(attribute)
             self.data[attribute] = {
                 "label": label,
-                "annotation": self.get_annotation(label, source="emu")
+                "annotation": self.get_annotation(label, source="emu"),
             }
         # Add composite EMU_Description class and annotation.
         # Get ecosystems values and join with commas
@@ -327,12 +319,14 @@ class Attributes:
         #  attributes are None. Not sure why this is happening. Recreate this
         #  issue by running on geographic coverage in the file knb-lter-sbc.100.11.xml
         if None in EMU_Descriptor_annotation:
-            EMU_Descriptor_annotation = ["Placeholder" if f is None else f for f in EMU_Descriptor_annotation]
+            EMU_Descriptor_annotation = [
+                "Placeholder" if f is None else f for f in EMU_Descriptor_annotation
+            ]
 
         EMU_Descriptor_annotation = "|".join(EMU_Descriptor_annotation)
         self.data["EMU_Descriptor"] = {
             "label": EMU_Descriptor,
-            "annotation": EMU_Descriptor_annotation
+            "annotation": EMU_Descriptor_annotation,
         }
         # Append to results
         self.data = self.data
@@ -341,9 +335,9 @@ class Attributes:
     def get_annotation(label, source):
         if source == "wte":
             with open(
-                    "src/spinneret/data/sssom/wte-envo.sssom.tsv",
-                    mode="r",
-                    encoding="utf-8"
+                "src/spinneret/data/sssom/wte-envo.sssom.tsv",
+                mode="r",
+                encoding="utf-8",
             ) as f:
                 sssom = pd.read_csv(f, sep="\t")
             sssom["subject_label"] = sssom["subject_label"].str.lower()
@@ -359,6 +353,7 @@ class Attributes:
         # return res
         return "Placeholder"
 
+
 class Response:
     """A class to parse the response from the identify operation
 
@@ -371,7 +366,6 @@ class Response:
     def __init__(self, json, geometry):
         self.json = json
         self.geometry = geometry
-
 
     def get_attributes(self, attributes):
         """Recursively get attributes of a response from an identify or query
@@ -416,7 +410,7 @@ class Response:
 
     def has_ecosystem(self, source):
         if source == "wte":
-            res = _json_extract(self.json, "Pixel Value")
+            res = _json_extract(self.json, "UniqueValue.Pixel Value")
             if len(res) == 0:
                 return False
             if len(res) > 0 and res[0] == "NoData":
@@ -451,7 +445,7 @@ class Response:
         #   purposes. The current name of this function is a bit misleading.
         #   A better name may be create_ecosystem_attribute_iterable(), or
         #   get_unique_ecosystem_attributes().
-        if source == 'wte':
+        if source == "wte":
             # Parse the attributes of the ecosystems listed in the response
             # object in a form that can be compared and used to render the list
             # of unique ecosystems returned by the identify operation.
@@ -463,13 +457,13 @@ class Response:
             for result in results:
                 res = dict()
                 for attribute in attributes:
-                    res[attribute] = result['attributes'].get(attribute)
+                    res[attribute] = result["attributes"].get(attribute)
                 res = json.dumps(res)
                 descriptors.append(res)
             descriptors = set(descriptors)
             descriptors = [json.loads(d) for d in descriptors]
             return descriptors
-        elif source == 'ecu':
+        elif source == "ecu":
             if not self.has_ecosystem(source="ecu"):
                 return list()
             attribute = "CSU_Descriptor"
@@ -477,7 +471,7 @@ class Response:
             descriptors = set(descriptors)
             descriptors = list(descriptors)
             return descriptors
-        elif source == 'emu':
+        elif source == "emu":
             if not self.has_ecosystem(source="emu"):
                 return list()
             # FIXME? - get_ecosystems_for_geometry_z_values does two things:
@@ -489,8 +483,11 @@ class Response:
             #  WTE and ECU function's get and unique operations should be
             #  combined into one.
             self.convert_codes_to_values(
-                source="emu")  # FIXME? This pattern differs from WTE and ECU implementations. Change? See implementation notes.
-            descriptors = self.get_ecosystems_for_geometry_z_values(source="emu")  # FIXME? This pattern differs from WTE and ECU implementations. Change? See implementation notes.
+                source="emu"
+            )  # FIXME? This pattern differs from WTE and ECU implementations. Change? See implementation notes.
+            descriptors = self.get_ecosystems_for_geometry_z_values(
+                source="emu"
+            )  # FIXME? This pattern differs from WTE and ECU implementations. Change? See implementation notes.
             return descriptors
 
     def get_ecosystems(self, source):
@@ -510,8 +507,9 @@ class Response:
             ecosystem.set_source("wte")
             ecosystem.set_version(None)
             attributes = Attributes(source="wte")
-            attributes.set_attributes(unique_ecosystem_attributes=unique_wte_ecosystem,
-                                      source="wte")
+            attributes.set_attributes(
+                unique_ecosystem_attributes=unique_wte_ecosystem, source="wte"
+            )
             ecosystem.add_attributes(attributes)
             ecosystems.append(ecosystem.data)
         return ecosystems
@@ -524,8 +522,9 @@ class Response:
             ecosystem.set_source("ecu")
             ecosystem.set_version(None)
             attributes = Attributes(source="ecu")
-            attributes.set_attributes(unique_ecosystem_attributes=unique_ecu_ecosystem,
-                                      source="ecu")
+            attributes.set_attributes(
+                unique_ecosystem_attributes=unique_ecu_ecosystem, source="ecu"
+            )
             ecosystem.add_attributes(attributes)
             ecosystems.append(ecosystem.data)
         return ecosystems
@@ -538,8 +537,9 @@ class Response:
             ecosystem.set_source("emu")
             ecosystem.set_version(None)
             attributes = Attributes(source="emu")
-            attributes.set_attributes(unique_ecosystem_attributes=unique_emu_ecosystem,
-                                      source="emu")
+            attributes.set_attributes(
+                unique_ecosystem_attributes=unique_emu_ecosystem, source="emu"
+            )
             ecosystem.add_attributes(attributes)
             ecosystems.append(ecosystem.data)
         return ecosystems
@@ -609,30 +609,34 @@ class Response:
                 for item in self.json["features"]:
                     parsed = {
                         "attributes": {
-                            "OceanName": item['attributes']['OceanName'],
-                            "Name_2018": item['attributes']['Name_2018']
+                            "OceanName": item["attributes"]["OceanName"],
+                            "Name_2018": item["attributes"]["Name_2018"],
                         }
                     }
                     res.append(json.dumps(parsed))
             else:  # Case when z values are present
                 for item in self.json["features"]:
-                    top = item['attributes']['UnitTop']
-                    bottom = item['attributes']['UnitBottom']
+                    top = item["attributes"]["UnitTop"]
+                    bottom = item["attributes"]["UnitBottom"]
                     # Case where zmin and zmax are equal
-                    if (zmax <= top and zmax >= bottom) and (zmin <= top and zmin >= bottom):
+                    if (zmax <= top and zmax >= bottom) and (
+                        zmin <= top and zmin >= bottom
+                    ):
                         parsed = {
                             "attributes": {
-                                "OceanName": item['attributes']['OceanName'],
-                                "Name_2018": item['attributes']['Name_2018']
+                                "OceanName": item["attributes"]["OceanName"],
+                                "Name_2018": item["attributes"]["Name_2018"],
                             }
                         }
                         res.append(json.dumps(parsed))
                     # Case where zmin and zmax are not equal (a depth interval)
-                    if (zmax <= top and zmax >= bottom) or (zmin <= top and zmin >= bottom):
+                    if (zmax <= top and zmax >= bottom) or (
+                        zmin <= top and zmin >= bottom
+                    ):
                         parsed = {
                             "attributes": {
-                                "OceanName": item['attributes']['OceanName'],
-                                "Name_2018": item['attributes']['Name_2018']
+                                "OceanName": item["attributes"]["OceanName"],
+                                "Name_2018": item["attributes"]["Name_2018"],
                             }
                         }
                         res.append(json.dumps(parsed))
@@ -678,7 +682,7 @@ def identify(geometry=str, map_server=str):
         "geometryType": _get_geometry_type(geometry),
         "tolerance": 2,
         "mapExtent": "-2.865, 47.628, 5.321, 50.017",
-        "imageDisplay": "600,550,96"
+        "imageDisplay": "600,550,96",
     }
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
     return Response(json=r.json(), geometry=geometry)
@@ -726,7 +730,9 @@ def query(geometry=str, map_server=str):
             # sampling locations, represented by point geometries, and location
             # of ECUs. This is a conservative estimate of the spatial
             # accuracy between the point location and nearby ECUs.
-            geometry = convert_point_to_envelope(geometry, buffer=0.5)  # TODO Rename to add_buffer? Doing so may keep from confounding the fact that the input geometry may either represent a true point or an envelope
+            geometry = convert_point_to_envelope(
+                geometry, buffer=0.5
+            )  # TODO Rename to add_buffer? Doing so may keep from confounding the fact that the input geometry may either represent a true point or an envelope
         payload = {
             "f": "geojson",
             "geometry": geometry,
@@ -740,16 +746,16 @@ def query(geometry=str, map_server=str):
             "returnZ": "false",
             "returnM": "false",
             # "returnDistinctValues": "true",
-            "returnExtentOnly": "false"
+            "returnExtentOnly": "false",
         }
         base = (
-                "https://rmgsc.cr.usgs.gov/arcgis/rest/services/" +
-                map_server +
-                "/MapServer/" +
-                layer +
-                "/query"
+            "https://rmgsc.cr.usgs.gov/arcgis/rest/services/"
+            + map_server
+            + "/MapServer/"
+            + layer
+            + "/query"
         )
-    elif map_server == 'emu':
+    elif map_server == "emu":
         layer = "0"
         map_server = "EMU_2018"
         # Note, the map service query form contains these parameters and
@@ -780,14 +786,14 @@ def query(geometry=str, map_server=str):
             "sqlFormat": "none",
             "orderByFields": "UnitTop desc",
             "returnDistinctValues": "false",
-            "returnExtentOnly": "false"
+            "returnExtentOnly": "false",
         }
         base = (
-                "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/" +
-                map_server +
-                "/FeatureServer/" +
-                layer +
-                "/query"
+            "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/"
+            + map_server
+            + "/FeatureServer/"
+            + layer
+            + "/query"
         )
     r = requests.get(base, params=payload, timeout=10, headers=user_agent())
     return Response(json=r.json(), geometry=geometry)
@@ -816,19 +822,14 @@ def convert_point_to_envelope(geometry, buffer=None):
     if not _is_point_location(geometry) or buffer is None:
         return geometry
     geometry = json.loads(geometry)
-    df = pd.DataFrame([{'longitude': geometry["xmin"], 'latitude': geometry["ymin"]}])
+    df = pd.DataFrame([{"longitude": geometry["xmin"], "latitude": geometry["ymin"]}])
     gdf = gpd.GeoDataFrame(
-        df,
-        geometry=gpd.points_from_xy(
-            df.longitude,
-            df.latitude
-        ),
-        crs='EPSG:4326'
+        df, geometry=gpd.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326"
     )
     # TODO Verify the consequences of projecting to an arbitrary CRS
     #  for sake of buffering.
     gdf = gdf.to_crs("EPSG:32634")  # A CRS in units of meters
-    gdf.geometry = gdf.geometry.buffer(buffer*1000)  # Convert to meters
+    gdf.geometry = gdf.geometry.buffer(buffer * 1000)  # Convert to meters
     gdf = gdf.to_crs("EPSG:4326")  # Convert back to EPSG:4326
     bounds = gdf.bounds
     # TODO Update values of geometry object
@@ -866,6 +867,7 @@ def _get_geometry_type(geometry):
     else:
         return None
 
+
 def _is_point_location(geometry):
     """Is a geometry a point location? Points are represented as envelopes, but
     it is useful to know if the geometry is a point location for some internal
@@ -883,10 +885,12 @@ def _is_point_location(geometry):
     if _get_geometry_type(geometry) != "esriGeometryEnvelope":
         return False
     geometry = json.loads(geometry)
-    if geometry.get('xmin') == geometry.get('xmax') and \
-            geometry.get('ymin') == geometry.get('ymax'):
+    if geometry.get("xmin") == geometry.get("xmax") and geometry.get(
+        "ymin"
+    ) == geometry.get("ymax"):
         return True
     return False
+
 
 def _polygon_or_envelope_to_points(geometry):
     """Convert a polygon or envelope to a list of points
@@ -932,7 +936,7 @@ def _polygon_or_envelope_to_points(geometry):
             (geometry.get("xmin"), geometry.get("ymin")),
             (geometry.get("xmax"), geometry.get("ymin")),
             (geometry.get("xmax"), geometry.get("ymax")),
-            (geometry.get("xmin"), geometry.get("ymax"))
+            (geometry.get("xmin"), geometry.get("ymax")),
         ]
     # Construct point geometries from the envelope corners
     res = []
@@ -946,7 +950,7 @@ def _polygon_or_envelope_to_points(geometry):
                     "ymax": corner[1],
                     "zmin": geometry.get("zmin"),
                     "zmax": geometry.get("zmax"),
-                    "spatialReference": geometry.get("spatialReference")
+                    "spatialReference": geometry.get("spatialReference"),
                 }
             )
         )
@@ -964,7 +968,7 @@ def _polygon_or_envelope_to_points(geometry):
                 "ymax": centroid.y[0],
                 "zmin": geometry.get("zmin"),
                 "zmax": geometry.get("zmax"),
-                "spatialReference": geometry.get("spatialReference")
+                "spatialReference": geometry.get("spatialReference"),
             }
         )
     )
@@ -1017,7 +1021,7 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
         # Get metadata for dataset location
         gc = get_geographic_coverage(file)
         if gc is None:  # No geographic coverage (location) found
-            with open(output_file_path, "w", encoding='utf-8') as f:
+            with open(output_file_path, "w", encoding="utf-8") as f:
                 json.dump(base.data, f)
             continue
         for g in gc:
@@ -1028,18 +1032,16 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             location.set_geometry_type(g.geom_type())
             # Identify all ecosystems at the location (i.e. for the geometry)
 
-
             # Query the WTE map server
             if g.geom_type() == "point":
                 location.add_comments("WTE: Was queried.")
                 try:
-                    r = identify(
-                        geometry=g.to_esri_geometry(),
-                        map_server="wte"
-                    )
+                    r = identify(geometry=g.to_esri_geometry(), map_server="wte")
                 except ConnectionError:
                     r = None
-                    location.add_comments("WTE: Connection error. Please try again.")  # TODO: This should be more informative
+                    location.add_comments(
+                        "WTE: Connection error. Please try again."
+                    )  # TODO: This should be more informative
                 if r is not None:
                     # Build the ecosystem object and add it to the location.
                     if r.has_ecosystem(source="wte"):
@@ -1076,18 +1078,21 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             #  - test/test_globalelu.py::test_eml_to_wte_json_wte_envelope
             if g.geom_type() == "envelope" or g.geom_type() == "polygon":
                 location.add_comments("WTE: Was queried.")
-                points = _polygon_or_envelope_to_points(g.to_esri_geometry())  # Differs from the point implementation
+                points = _polygon_or_envelope_to_points(
+                    g.to_esri_geometry()
+                )  # Differs from the point implementation
                 ecosystems_in_envelope = []  # Differs from the point implementation
-                ecosystems_in_envelope_comments = []  # Differs from the point implementation
+                ecosystems_in_envelope_comments = (
+                    []
+                )  # Differs from the point implementation
                 for point in points:  # Differs from the point implementation
                     try:
-                        r = identify(
-                            geometry=point,
-                            map_server="wte"
-                        )
+                        r = identify(geometry=point, map_server="wte")
                     except ConnectionError:
                         r = None
-                        location.add_comments("WTE: Connection error. Please try again.")  # TODO: This should be more informative
+                        location.add_comments(
+                            "WTE: Connection error. Please try again."
+                        )  # TODO: This should be more informative
                     if r is not None:
                         # Build the ecosystem object and add it to the location.
                         if r.has_ecosystem(source="wte"):
@@ -1099,36 +1104,46 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                             #  a good design pattern is found. Proposed design
                             #  patterns are:
                             #
-                            ecosystems_in_envelope.append( # Differs from the point implementation
-                                json.dumps(ecosystems[0]))
+                            ecosystems_in_envelope.append(  # Differs from the point implementation
+                                json.dumps(ecosystems[0])
+                            )
                         else:
                             # Add an explanatory comment if not resolved, to
                             # facilitate understanding and analysis.
-                            ecosystems_in_envelope_comments.append(r.get_comments("wte")) # Differs from the point implementation
-                ecosystems_in_envelope = list(set(ecosystems_in_envelope))  # Differs from the point implementation
-                ecosystems_in_envelope = [json.loads(e) for e in ecosystems_in_envelope]  # Differs from the point implementation
+                            ecosystems_in_envelope_comments.append(
+                                r.get_comments("wte")
+                            )  # Differs from the point implementation
+                ecosystems_in_envelope = list(
+                    set(ecosystems_in_envelope)
+                )  # Differs from the point implementation
+                ecosystems_in_envelope = [
+                    json.loads(e) for e in ecosystems_in_envelope
+                ]  # Differs from the point implementation
                 # FIXME This creates a list of comments in the response object.
                 #  This should only be a string, however, more than one
                 #  comment may result from multiple queries. What to do?
-                ecosystems_in_envelope_comments = list(set(ecosystems_in_envelope_comments))  # Differs from the point implementation
-                location.add_ecosystem(ecosystems_in_envelope)  # Differs from the point implementation
-                location.add_comments(ecosystems_in_envelope_comments)  # Differs from the point implementation
+                ecosystems_in_envelope_comments = list(
+                    set(ecosystems_in_envelope_comments)
+                )  # Differs from the point implementation
+                location.add_ecosystem(
+                    ecosystems_in_envelope
+                )  # Differs from the point implementation
+                location.add_comments(
+                    ecosystems_in_envelope_comments
+                )  # Differs from the point implementation
                 # TODO end of draft implementation for envelopes ----------------------------
             # if g.geom_type() == "polygon":
             #     location.add_comments("WTE: Was not queried because geometry is an unsupported type.")
 
-
-
             # Query the ECU map server
             location.add_comments("ECU: Was queried.")
             try:
-                r = query(
-                    geometry=g.to_esri_geometry(),
-                    map_server="ecu"
-                )
+                r = query(geometry=g.to_esri_geometry(), map_server="ecu")
             except ConnectionError:
                 r = None
-                location.add_comments("ECU: Connection error. Please try again.")  # TODO: This should be more informative
+                location.add_comments(
+                    "ECU: Connection error. Please try again."
+                )  # TODO: This should be more informative
             if r is not None:
                 # Build the ecosystem object and add it to the location.
                 if r.has_ecosystem(source="ecu"):
@@ -1142,13 +1157,12 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
             # Query the EMU map server
             location.add_comments("EMU: Was queried.")
             try:
-                r = query(
-                    geometry=g.to_esri_geometry(),
-                    map_server="emu"
-                )
+                r = query(geometry=g.to_esri_geometry(), map_server="emu")
             except ConnectionError:
                 r = None
-                location.add_comments("EMU: Connection error. Please try again.")  # TODO: This should be more informative
+                location.add_comments(
+                    "EMU: Connection error. Please try again."
+                )  # TODO: This should be more informative
             if r is not None:
                 # Build the ecosystem object and add it to the location.
                 if r.has_ecosystem(source="emu"):
@@ -1159,7 +1173,6 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
                     # facilitate understanding and analysis.
                     location.add_comments(r.get_comments("ecu"))
 
-
             # TODO Query the Freshwater map server
 
             # Add the location, and its ecosystems, to the base object.
@@ -1167,9 +1180,8 @@ def eml_to_wte_json(eml_dir, output_dir, overwrite=False):
         # Write the base object to a json file. Empty locations indicate no
         # ecosystems were found at the location. Empty ecosystems indicate the
         # location has no resolvable ecosystems.
-        with open(output_file_path, "w", encoding='utf-8') as f:
+        with open(output_file_path, "w", encoding="utf-8") as f:
             json.dump(base.data, f)
-
 
 
 def json_to_df(json_dir, format="wide"):
@@ -1232,7 +1244,7 @@ def json_to_df(json_dir, format="wide"):
         "Dissolved Oxygen": None,
         "Nitrate": None,
         "Phosphate": None,
-        "Silicate": None
+        "Silicate": None,
     }
     # Iterate over the json files, parse the contents into a dictionary, and
     # append the results to the res list for later conversion to a dataframe.
@@ -1242,7 +1254,9 @@ def json_to_df(json_dir, format="wide"):
             dataset = j.get("dataset")
             location = j.get("location")
             if len(location) == 0:  # No locations were found. Append and continue.
-                output = dict(boilerplate_output)  # Create a copy of the boilerplate and begin populating it
+                output = dict(
+                    boilerplate_output
+                )  # Create a copy of the boilerplate and begin populating it
                 # Note, in this function, values for the output dictionary are
                 # stored as variables, which are added to the dictionary right
                 # before it is appended to the res list. This is done to ensure
@@ -1261,7 +1275,9 @@ def json_to_df(json_dir, format="wide"):
                     comments = ["" if c is None else c for c in comments]
                     comments = " ".join(comments)
                     ecosystem = loc.get("ecosystem")
-                    if len(ecosystem) == 0:  # No ecosystems were resolved. Append and continue.
+                    if (
+                        len(ecosystem) == 0
+                    ):  # No ecosystems were resolved. Append and continue.
                         output = dict(boilerplate_output)
                         output["dataset"] = dataset
                         output["description"] = description
@@ -1299,16 +1315,12 @@ def json_to_df(json_dir, format="wide"):
         columns={
             "dataset": "package_id",
             "description": "geographic_coverage_description",
-            "source": "ecosystem_type"
+            "source": "ecosystem_type",
         }
     )
     # Convert acronyms (of ecosystem types) to more descriptive names for readability
     df["ecosystem_type"] = df["ecosystem_type"].replace(
-        {
-            "wte": "Terrestrial",
-            "ecu": "Coastal",
-            "emu": "Marine"
-        }
+        {"wte": "Terrestrial", "ecu": "Coastal", "emu": "Marine"}
     )
     if format == "wide":
         return df
@@ -1321,10 +1333,10 @@ def json_to_df(json_dir, format="wide"):
             "geographic_coverage_description",
             "geometry_type",
             "comments",
-            "ecosystem_type"
+            "ecosystem_type",
         ],
         var_name="ecosystem_attribute",
-        value_name="value"
+        value_name="value",
     )
 
     # Remove rows where ecosystem_type and ecosystem_attribute should not be
@@ -1339,11 +1351,7 @@ def json_to_df(json_dir, format="wide"):
     df_terrestrial = df[df["ecosystem_type"] == "Terrestrial"]
     df_terrestrial = df_terrestrial[
         df_terrestrial["ecosystem_attribute"].isin(
-            [
-                "Climate_Re",
-                "Landcover",
-                "Landforms"
-            ]
+            ["Climate_Re", "Landcover", "Landforms"]
         )
     ]
     # Subset the dataframe where the ecosystem_type is "Coastal".
@@ -1360,7 +1368,7 @@ def json_to_df(json_dir, format="wide"):
                 "Tidal Range",
                 "Marine Physical Environment",
                 "Turbidity",
-                "Chlorophyll"
+                "Chlorophyll",
             ]
         )
     ]
@@ -1376,7 +1384,7 @@ def json_to_df(json_dir, format="wide"):
                 "Dissolved Oxygen",
                 "Nitrate",
                 "Phosphate",
-                "Silicate"
+                "Silicate",
             ]
         )
     ]
@@ -1389,8 +1397,17 @@ def json_to_df(json_dir, format="wide"):
     df = df[df["value"] != "n/a"]
 
     # Sort by package_id and attribute for readability
-    df = df.sort_values(by=['package_id', 'geographic_coverage_description', 'geometry_type', 'comments',
-       'ecosystem_type', 'ecosystem_attribute', 'value'])
+    df = df.sort_values(
+        by=[
+            "package_id",
+            "geographic_coverage_description",
+            "geometry_type",
+            "comments",
+            "ecosystem_type",
+            "ecosystem_attribute",
+            "value",
+        ]
+    )
     # Sort for readability. This is the same as the above sort but is done
     # again after a series of operations that may have changed the order.
     df[["scope", "identifier"]] = df["package_id"].str.split(".", n=1, expand=True)
@@ -1398,7 +1415,6 @@ def json_to_df(json_dir, format="wide"):
     df = df.sort_values(by=["scope", "identifier"])
     df = df.drop(columns=["scope", "identifier"])
     return df
-
 
 
 def get_number_of_unique_ecosystems(df_wide):
@@ -1418,7 +1434,14 @@ def get_number_of_unique_ecosystems(df_wide):
     # Drop the columns that are not ecosystem attributes except for ecosystem
     # type, which is needed to count the number of unique ecosystems for each
     # ecosystem type.
-    df = df_wide.drop(columns=["package_id", "geographic_coverage_description", "geometry_type", "comments"])
+    df = df_wide.drop(
+        columns=[
+            "package_id",
+            "geographic_coverage_description",
+            "geometry_type",
+            "comments",
+        ]
+    )
     # Drop duplicate rows so that each row represents a unique ecosystem
     df = df.drop_duplicates()
     # Drop rows where the ecosystem type is None, these should not be counted.
@@ -1478,20 +1501,37 @@ def get_percent_of_geometries_with_no_ecosystem(df_wide):
     """
     # Drop the columns that are not ecosystem attributes or geometry identifiers
     # since we only want to count the number of geometries with no ecosystem.
-    df = df_wide.drop(columns=['geometry_type', 'comments', 'ecosystem_type'])
+    df = df_wide.drop(columns=["geometry_type", "comments", "ecosystem_type"])
     # Get number of rows where package_id and geographic_coverage_description
     # are the same.
-    total_number_of_unique_geometries = df[df.duplicated(subset=['package_id', 'geographic_coverage_description'])].shape[0]
+    total_number_of_unique_geometries = df[
+        df.duplicated(subset=["package_id", "geographic_coverage_description"])
+    ].shape[0]
     # Remove rows from df where all ecosystem attribute columns do not have a
     # value of None. The remaining rows represent geometries that have no
     # ecosystem for some reason.
     ecosystem_attribute_columns = [
-        'Climate_Re',
-        'Landcover', 'Landforms', 'Slope', 'Sinuosity', 'Erodibility',
-        'Temperature and Moisture Regime', 'River Discharge', 'Wave Height',
-        'Tidal Range', 'Marine Physical Environment', 'Turbidity',
-        'Chlorophyll', 'OceanName', 'Depth', 'Temperature', 'Salinity',
-        'Dissolved Oxygen', 'Nitrate', 'Phosphate', 'Silicate'
+        "Climate_Re",
+        "Landcover",
+        "Landforms",
+        "Slope",
+        "Sinuosity",
+        "Erodibility",
+        "Temperature and Moisture Regime",
+        "River Discharge",
+        "Wave Height",
+        "Tidal Range",
+        "Marine Physical Environment",
+        "Turbidity",
+        "Chlorophyll",
+        "OceanName",
+        "Depth",
+        "Temperature",
+        "Salinity",
+        "Dissolved Oxygen",
+        "Nitrate",
+        "Phosphate",
+        "Silicate",
     ]
     df = df[df[ecosystem_attribute_columns].isnull().all(axis=1)]
     # Drop duplicate rows so that each row represents a unique geometry with no
@@ -1502,7 +1542,9 @@ def get_percent_of_geometries_with_no_ecosystem(df_wide):
     number_of_geometries_with_no_ecosystem = df.shape[0]
     # Return as the percent of geometries with no ecosystem out of the total
     # number of unique geometries.
-    percent_of_geometries_with_no_ecosystem = number_of_geometries_with_no_ecosystem / total_number_of_unique_geometries * 100
+    percent_of_geometries_with_no_ecosystem = (
+        number_of_geometries_with_no_ecosystem / total_number_of_unique_geometries * 100
+    )
     return percent_of_geometries_with_no_ecosystem
 
 
@@ -1521,9 +1563,13 @@ def plot_wide_data(df_wide):
     # FIXME: This function should be renamed to something more descriptive.
     # Count the number of unique ecosystem_type values for each unique
     # package_id.
-    df = df_wide.groupby(['package_id', 'ecosystem_type']).size().reset_index(name='Count')
+    df = (
+        df_wide.groupby(["package_id", "ecosystem_type"])
+        .size()
+        .reset_index(name="Count")
+    )
     # Create a histogram of the counts for each ecosystem_type
-    df.hist(column='Count', by='ecosystem_type', bins=20, figsize=(10, 10))
+    df.hist(column="Count", by="ecosystem_type", bins=20, figsize=(10, 10))
     plt.show()
     return None
 
@@ -1534,51 +1580,63 @@ def plot_long_data(df_long, output_dir):
     df = df_long.dropna()
     # Drop geographic_coverage_description, comments, and geometry_type
     # columns since they are not used in this analysis.
-    df = df.drop(columns=['geographic_coverage_description', 'comments', 'geometry_type'])
+    df = df.drop(
+        columns=["geographic_coverage_description", "comments", "geometry_type"]
+    )
     # Drop duplicate rows
     df = df.drop_duplicates()
     # Group by ecosystem_type, ecosystem_attribute, and value and count the
     # number of unique package_id values for each unique combination of
     # ecosystem_type, ecosystem_attribute, and value. This creates the data
     # frame that will be used to create the plots.
-    df = df.groupby(['ecosystem_type', 'ecosystem_attribute', 'value']).size().reset_index(name='Count')
+    df = (
+        df.groupby(["ecosystem_type", "ecosystem_attribute", "value"])
+        .size()
+        .reset_index(name="Count")
+    )
 
     # Create a series of horizontal bar plots for each ecosystem type,
     # where each plot is grouped by the ecosystem_attribute column. Individual
     # plots are necessary, rather than a single plot with subplots, because
     # the number of plots generated for the marine and coastal ecosystem types
     # is on the order of 10s, which is too many to display in a single plot.
-    for ecosystem_type in df['ecosystem_type'].unique():
+    for ecosystem_type in df["ecosystem_type"].unique():
         # Subset the data frame to only include rows that contain the current
         # ecosystem_type (i.e. Terrestrial, Marine, or Coastal).
-        df_subset = df[df['ecosystem_type'] == ecosystem_type]
-        for ecosystem_attribute in df_subset['ecosystem_attribute'].unique():
+        df_subset = df[df["ecosystem_type"] == ecosystem_type]
+        for ecosystem_attribute in df_subset["ecosystem_attribute"].unique():
             # Subset the data frame to only include rows that contain the
             # current ecosystem_attribute values.
-            df_subset2 = df_subset[df_subset['ecosystem_attribute'] == ecosystem_attribute]
+            df_subset2 = df_subset[
+                df_subset["ecosystem_attribute"] == ecosystem_attribute
+            ]
             # Sort the rows by the value column in descending order for
             # readability.
-            df_subset2 = df_subset2.sort_values(by=['Count'], ascending=True)
+            df_subset2 = df_subset2.sort_values(by=["Count"], ascending=True)
 
             # Start building the bar chart.
-            counts = df_subset2['Count'].values.tolist()
-            names = df_subset2['value'].values.tolist()
+            counts = df_subset2["Count"].values.tolist()
+            names = df_subset2["value"].values.tolist()
             BLUE = "#076fa2"
             # Set the positions for the bars. This allows us to determine
             # the bar locations.
             y = [i * 0.9 for i in range(len(names))]
             # Create the basic bar chart
             fig, ax = plt.subplots(figsize=(12, 7))
-            ax.barh(y, counts, height=0.55, align="edge", color=BLUE);
+            ax.barh(y, counts, height=0.55, align="edge", color=BLUE)
             # Customize the layout of the bar chart
             if max(counts) >= 200:
                 x_tick_interval = 20
             else:
                 x_tick_interval = 10
             ax.xaxis.set_ticks([i for i in range(0, max(counts), x_tick_interval)])
-            ax.xaxis.set_ticklabels([i for i in range(0, max(counts), x_tick_interval)], size=16, fontweight=100)
+            ax.xaxis.set_ticklabels(
+                [i for i in range(0, max(counts), x_tick_interval)],
+                size=16,
+                fontweight=100,
+            )
             ax.xaxis.set_tick_params(labelbottom=False, labeltop=True, length=0)
-            ax.set_xlim((0, max(counts)+10))
+            ax.set_xlim((0, max(counts) + 10))
             ax.set_ylim((0, len(names) * 0.9 - 0.2))
             # Set whether axis ticks and gridlines are above or below most axes.
             ax.set_axisbelow(True)
@@ -1605,10 +1663,13 @@ def plot_long_data(df_long, output_dir):
                 # "invisible ink", get the max x position of each, and then
                 # compare them.
                 ax.text(
-                    x + PAD, y_pos + 0.5 / 2, name,
-                    color="none", fontsize=18,
+                    x + PAD,
+                    y_pos + 0.5 / 2,
+                    name,
+                    color="none",
+                    fontsize=18,
                     va="center",
-                    path_effects=path_effects
+                    path_effects=path_effects,
                 )
                 x_text_end = ax.texts[-1].get_window_extent().x1
                 ax.plot(count, y_pos, ".", color="none", markersize=18)
@@ -1618,13 +1679,15 @@ def plot_long_data(df_long, output_dir):
                 if position_label_to_right_of_bar:
                     x = count
                     color = BLUE
-                    path_effects = [
-                        withStroke(linewidth=6, foreground="white")]
+                    path_effects = [withStroke(linewidth=6, foreground="white")]
                 ax.text(
-                    x + PAD, y_pos + 0.5 / 2, name,
-                    color=color, fontsize=18,
+                    x + PAD,
+                    y_pos + 0.5 / 2,
+                    name,
+                    color=color,
+                    fontsize=18,
                     va="center",
-                    path_effects=path_effects
+                    path_effects=path_effects,
                 )
             fig
             # Add annotations and final tweaks
@@ -1638,8 +1701,11 @@ def plot_long_data(df_long, output_dir):
             ttl = "{} - {}".format(ecosystem_type, ecosystem_attribute)
             fig.text(
                 # 0, 0.925, ttl,
-                0.05, 0.925, ttl,
-                fontsize=22, fontweight="bold"
+                0.05,
+                0.925,
+                ttl,
+                fontsize=22,
+                fontweight="bold",
             )
             # Set facecolor, useful when saving as .png
             fig.set_facecolor("white")
@@ -1705,21 +1771,23 @@ if __name__ == "__main__":
     #     overwrite=False
     # )
 
-    # Combine json files into a single dataframe
-    df_long = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="long")
-    df_wide = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="wide")
-
-    # # Write df to tsv
-    # import csv
-    # output_dir = "/Users/csmith/Data/edi/"
-    # df_long.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
-
-    # Summarize results
-    unique_ecosystems_by_type = get_number_of_unique_ecosystems(df_wide)
-    no_ecosystem = get_percent_of_geometries_with_no_ecosystem(df_wide)
-    number_of_unique_geographic_coverages = get_number_of_unique_geographic_coverages(df_wide)
-
-    # PLot results
-    # plot_wide_data(df_wide)
-    plot_long_data(df_long, output_dir="/Users/csmith/Data/edi/top_20_plots/")
-    print("42")
+    # # Visualization
+    #
+    # # Combine json files into a single dataframe
+    # df_long = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="long")
+    # df_wide = json_to_df(json_dir="/Users/csmith/Data/edi/top_20_json/", format="wide")
+    #
+    # # # Write df to tsv
+    # # import csv
+    # # output_dir = "/Users/csmith/Data/edi/"
+    # # df_long.to_csv(output_dir + "top_20_results.tsv", sep="\t", index=False, quoting=csv.QUOTE_ALL)
+    #
+    # # Summarize results
+    # unique_ecosystems_by_type = get_number_of_unique_ecosystems(df_wide)
+    # no_ecosystem = get_percent_of_geometries_with_no_ecosystem(df_wide)
+    # number_of_unique_geographic_coverages = get_number_of_unique_geographic_coverages(df_wide)
+    #
+    # # PLot results
+    # # plot_wide_data(df_wide)
+    # plot_long_data(df_long, output_dir="/Users/csmith/Data/edi/top_20_plots/")
+    # print("42")

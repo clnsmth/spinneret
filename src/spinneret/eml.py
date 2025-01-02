@@ -174,10 +174,7 @@ class GeographicCoverage:
         except TypeError:
             res = None
         if to_meters is True:
-            res = self._convert_to_meters(
-                x=res,
-                from_units=self.altitude_units()
-            )
+            res = self._convert_to_meters(x=res, from_units=self.altitude_units())
         return res
 
     def altitude_maximum(self, to_meters=False):
@@ -206,12 +203,8 @@ class GeographicCoverage:
         except TypeError:
             res = None
         if to_meters is True:
-            res = self._convert_to_meters(
-                x=res,
-                from_units=self.altitude_units()
-            )
+            res = self._convert_to_meters(x=res, from_units=self.altitude_units())
         return res
-
 
     def altitude_units(self):
         try:
@@ -337,7 +330,9 @@ class GeographicCoverage:
         if self.geom_type() == "polygon":
             return self._to_esri_polygon()
         if self.geom_type() == "point":
-            return self._to_esri_envelope()  # Envelopes are more expressive and behave the same as point geometries, so us envelopes
+            return (
+                self._to_esri_envelope()
+            )  # Envelopes are more expressive and behave the same as point geometries, so us envelopes
         if self.geom_type() == "envelope":
             return self._to_esri_envelope()
         return None
@@ -364,7 +359,7 @@ class GeographicCoverage:
             "ymax": self.north(),
             "zmin": altitude_minimum,
             "zmax": altitude_maximum,
-            "spatialReference": {"wkid": 4326}
+            "spatialReference": {"wkid": 4326},
         }
         return json.dumps(res)
 
@@ -434,9 +429,13 @@ class GeographicCoverage:
             x = float("NaN")
         conversion_factors = _load_conversion_factors()
         conversion_factor = conversion_factors.get(from_units, float("NaN"))
-        if not isnan(conversion_factor):  # Apply the conversion factor if from_units is a valid unit of measurement otherwise return the length value as is
+        if not isnan(
+            conversion_factor
+        ):  # Apply the conversion factor if from_units is a valid unit of measurement otherwise return the length value as is
             x = x * conversion_factors.get(from_units, float("NaN"))
-        if isnan(x):  # Convert back to None, which is the NULL type returned by altitude_minimum and altitude_maximum
+        if isnan(
+            x
+        ):  # Convert back to None, which is the NULL type returned by altitude_minimum and altitude_maximum
             x = None
         return x
 
@@ -466,7 +465,7 @@ def _load_conversion_factors():
         "Yard_Indian": 0.914398530744440774,
         "Link_Clarke": 0.2011661949,
         "Yard_Sears": 0.91439841461602867,
-        "mile": 1609.344
+        "mile": 1609.344,
     }
     return conversion_factors
 
