@@ -221,6 +221,13 @@ class Attributes:
         ----------
         unique_ecosystem_attributes : str
             Dictionary of unique ecosystem attributes.
+
+        Notes
+        -----
+        The expected attribute keys are not returned in the API response, but
+        are defined in https://doi.org/10.5670/oceanog.2021.219. We use the
+        paper to define the expected attributes here, and set them in the order
+        that is consistently returned in the API response.
         """
         if len(unique_ecosystem_attributes) == 0:
             return None
@@ -265,6 +272,14 @@ class Attributes:
         self.data = self.data
 
     def set_emu_attributes(self, unique_ecosystem_attributes):
+        """
+        Notes
+        -----
+        The expected attribute keys are not returned in the API response, but
+        are defined in https://doi.org/10.5670/oceanog.2017.116. We use the
+        paper to define the expected attributes here, and set them in the order
+        that is consistently returned in the API response.
+        """
         if len(unique_ecosystem_attributes) == 0:
             return None
         # There are two attributes for EMU, OceanName and Name_2018, the latter
