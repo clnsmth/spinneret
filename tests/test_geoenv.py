@@ -3,65 +3,6 @@
 import json
 import pytest
 from spinneret import geoenv
-from spinneret import eml
-
-
-@pytest.fixture
-def geocov():  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
-    """A list of GeographicCoverage instances from the test EML file.
-
-    The test EML file is src/spinneret/data/eml/edi.1.1.xml, which contains
-    a representative set of user inputs for the identify() function."""
-    res = eml.get_geographic_coverage(eml="src/spinneret/data/eml/edi.1.1.xml")
-    return res
-
-
-@pytest.fixture
-def geometry_shapes():
-    """A list of ESRI geometries."""
-    geometries = {
-        "esriGeometryPoint": json.dumps(
-            {
-                "x": "<x>",
-                "y": "<y>",
-                "z": "<z>",
-                "m": "<m>",
-                "spatialReference": {"<spatialReference>": "<value>"},
-            }
-        ),
-        "esriGeometryPolygon": json.dumps(
-            {
-                "hasZ": "<true | false>",
-                "hasM": "<true | false>",
-                "rings": [
-                    [
-                        ["<x11>", "<y11>", "<z11>", "<m11>"],
-                        ["<x1N>", "<y1N>", "<z1N>", "<m1N>"],
-                    ],
-                    [
-                        ["<xk1>", "<yk1>", "<zk1>", "<mk1>"],
-                        ["<xkM>", "<ykM>", "<zkM>", "<mkM>"],
-                    ],
-                ],
-                "spatialReference": {"<spatialReference>": "<value>"},
-            }
-        ),
-        "esriGeometryEnvelope": json.dumps(
-            {
-                "xmin": "<xmin>",
-                "ymin": "<ymin>",
-                "xmax": "<xmax>",
-                "ymax": "<ymax>",
-                "zmin": "<zmin>",
-                "zmax": "<zmax>",
-                "mmin": "<mmin>",
-                "mmax": "<mmax>",
-                "spatialReference": {"<spatialReference>": "<value>"},
-            }
-        ),
-        "unsupported": json.dumps({"unsupported": "<unsupported>"}),
-    }
-    return geometries
 
 
 def test_Response_init():
@@ -234,7 +175,7 @@ def test_Attributes_init():
             assert isinstance(attributes.data[attribute]["annotation"], None.__class__)
 
 
-def test_set_wte_attributes(geocov):
+def test_set_wte_attributes(test_geometry):
     """Test the set_wte_attributes method.
 
     The set_wte_attributes method should take the data from a WTE identify
@@ -247,7 +188,7 @@ def test_set_wte_attributes(geocov):
     instance.
     """
     # Successful query
-    g = geocov[1]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[1]
     r = geoenv.identify(geometry=g.to_esri_geometry(), map_server="wte")
     raw_ecosystems = r.get_unique_ecosystems(source="wte")
     for raw_ecosystem in raw_ecosystems:
@@ -264,8 +205,9 @@ def test_set_wte_attributes(geocov):
             )
             assert attributes.data[attribute]["label"] is not None
             assert attributes.data[attribute]["annotation"] is not None
+
     # Unsuccessful query
-    g = geocov[2]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[2]
     r = geoenv.identify(geometry=g.to_esri_geometry(), map_server="wte")
     raw_ecosystems = r.get_unique_ecosystems(source="wte")
     attributes = geoenv.Attributes("wte")
@@ -273,7 +215,7 @@ def test_set_wte_attributes(geocov):
     assert attributes.data == geoenv.Attributes("wte").data
 
 
-def test_set_ecu_attributes(geocov):
+def test_set_ecu_attributes(test_geometry):
     """Test the set_ecu_attributes method.
 
     The set_ecu_attributes method should take the data from an ECU query
@@ -286,7 +228,7 @@ def test_set_ecu_attributes(geocov):
     instance.
     """
     # Successful query
-    g = geocov[8]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[8]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="ecu")
     raw_ecosystems = r.get_unique_ecosystems(source="ecu")
     for raw_ecosystem in raw_ecosystems:
@@ -303,8 +245,9 @@ def test_set_ecu_attributes(geocov):
             )
             assert attributes.data[attribute]["label"] is not None
             assert attributes.data[attribute]["annotation"] is not None
+
     # Unsuccessful query
-    g = geocov[1]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[1]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="ecu")
     raw_ecosystems = r.get_unique_ecosystems(source="ecu")
     attributes = geoenv.Attributes("ecu")
@@ -312,7 +255,7 @@ def test_set_ecu_attributes(geocov):
     assert attributes.data == geoenv.Attributes("ecu").data
 
 
-def test_set_emu_attributes(geocov):
+def test_set_emu_attributes(test_geometry):
     """Test the set_emu_attributes method.
 
     The set_emu_attributes method should take the data from an EMU query
@@ -325,7 +268,7 @@ def test_set_emu_attributes(geocov):
     instance.
     """
     # Successful query
-    g = geocov[11]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[11]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     raw_ecosystems = r.get_unique_ecosystems(source="emu")
     for raw_ecosystem in raw_ecosystems:
@@ -342,8 +285,9 @@ def test_set_emu_attributes(geocov):
             )
             assert attributes.data[attribute]["label"] is not None
             assert attributes.data[attribute]["annotation"] is not None
+
     # Unsuccessful query
-    g = geocov[0]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[0]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     raw_ecosystems = r.get_unique_ecosystems(source="emu")
     attributes = geoenv.Attributes("emu")
@@ -365,7 +309,7 @@ def test_add_attributes():
     assert isinstance(ecosystem.data["attributes"], dict)
 
 
-def test_identify(geocov):
+def test_identify(test_geometry):
     """Test the identify() function.
 
     The identify function queries a map service and returns a response object.
@@ -379,8 +323,11 @@ def test_identify(geocov):
     """
     # Run an identify operation on the WTE server with a set of geographic
     # coverages known to resolve to a WTE ecosystem.
-    geocov_success = [geocov[0], geocov[1]]  # An envelope on land  # A point on land  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
-    for g in geocov_success:
+    geom_success = [
+        test_geometry[0],  # An envelope on land
+        test_geometry[1]  # A point on land
+    ]
+    for g in geom_success:
         r = geoenv.identify(
             geometry=g.to_esri_geometry(),
             map_server="wte",
@@ -388,25 +335,26 @@ def test_identify(geocov):
         assert r is not None
         assert isinstance(r, geoenv.Response)
         assert r.has_ecosystem(source="wte")
+
     # Run an identify operation on the WTE server with a geographic coverage
     # known to not resolve to a WTE ecosystem, because it is either: a location
     # over the ocean or a freshwater body, an unsupported geometry type (i.e.
     # envelope or polygon), or a location outside the extent of the map
     # service.
-    geocov_fail = [  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
-        geocov[2],  # A polygon
-        geocov[4],  # A point over the ocean
-        geocov[5],  # A point over a freshwater body
-        geocov[6],  # A point outside the WTE map service extent
+    geom_fail = [
+        test_geometry[2],  # A polygon
+        test_geometry[4],  # A point over the ocean
+        test_geometry[5],  # A point over a freshwater body
+        test_geometry[6],  # A point outside the WTE map service extent
     ]
-    for g in geocov_fail:
+    for g in geom_fail:
         r = geoenv.identify(geometry=g.to_esri_geometry(), map_server="wte")
         assert r is not None
         assert isinstance(r, geoenv.Response)
         assert r.has_ecosystem(source="wte") is False
 
 
-def test_query(geocov):
+def test_query(test_geometry):
     """Test the query() function.
 
     The query function queries a map service and returns a response object.
@@ -419,8 +367,12 @@ def test_query(geocov):
     """
     # Query the ECU server with a geographic coverage known to resolve to one
     # or more ECUs.
-    geocov_success = [geocov[3], geocov[7], geocov[8]]  # Polygon  # Point  # Envelope  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
-    for g in geocov_success:
+    geom_success = [
+        test_geometry[3],  # Polygon
+        test_geometry[7],  # Point
+        test_geometry[8]  # Envelope
+    ]
+    for g in geom_success:
         r = geoenv.query(geometry=g.to_esri_geometry(), map_server="ecu")
         assert r is not None
         expected_attributes = "CSU_Descriptor"  # ECU has one attribute
@@ -428,9 +380,10 @@ def test_query(geocov):
         assert isinstance(attributes, list)
         assert isinstance(attributes[0], str)
         assert len(attributes[0]) > 0
+
     # Query the ECU server with a geographic coverage that is known to
     # not resolve to one or more ECUs.
-    g = geocov[0]  # Envelope on land  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[0]  # Envelope on land
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="ecu")
     assert r is not None
     assert r.has_ecosystem("ecu") is False
@@ -439,8 +392,12 @@ def test_query(geocov):
     # or more EMUs.
     # TODO This test can be combined with the one above, in a for loop, because
     #  the test structures are identical.
-    geocov_success = [geocov[4], geocov[9], geocov[10]]  # Point  # Envelope  # Polygon  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
-    for g in geocov_success:
+    geom_success = [
+        test_geometry[4],  # Point
+        test_geometry[9],  # Envelope
+        test_geometry[10]  # Polygon
+    ]
+    for g in geom_success:
         r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
         assert r is not None
         r.convert_codes_to_values(source="emu")
@@ -449,15 +406,16 @@ def test_query(geocov):
             assert isinstance(attributes, list)
             assert isinstance(attributes[0], str)
             assert len(attributes[0]) > 0
+
     # Query the EMU server with a geographic coverage that is known to
     # not resolve to one or more ECUs.
-    g = geocov[0]  # Envelope on land  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[0]  # Envelope on land
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     assert r is not None
     assert r.has_ecosystem("emu") is False
 
 
-def test_get_attributes(geocov):
+def test_get_attributes(test_geometry):
     """Test the get_attributes() function.
 
     The get_attributes() function should return a dictionary of attributes
@@ -465,7 +423,7 @@ def test_get_attributes(geocov):
     attributes and return an empty list for attributes that are not present.
     """
     r = geoenv.identify(
-        geometry=geocov[0].to_esri_geometry(),  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+        geometry=test_geometry[0].to_esri_geometry(),
         map_server="wte",
     )
     attributes = ["Raster.LF_ClassNa", "Raster.LC_ClassNa", "Raster.Temp_Class"]
@@ -525,7 +483,7 @@ def test_get_attributes(geocov):
 #             assert attrs["WTE"][a]["annotation"] is None
 
 
-def test_has_ecosystem(geocov):
+def test_has_ecosystem(test_geometry):
     """Test the has_ecosystem method.
 
     The has_ecosystem method should return True when the geometry is
@@ -535,107 +493,109 @@ def test_has_ecosystem(geocov):
     with an ECU vector. Similarly for EMU.
     """
     # Geometries over land areas have a WTE ecosystem
-    g = geocov[1]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[1]
     r = geoenv.identify(geometry=g.to_esri_geometry(), map_server="wte")
     assert r.has_ecosystem("wte") is True
     # Geometries over water bodies, or outside the WTE area, don't have a WTE
     # ecosystem.
-    geocov_ecu = [geocov[4], geocov[6]] # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
-    for g in geocov_ecu:
+    geom_ecu = [test_geometry[4], test_geometry[6]]
+    for g in geom_ecu:
         r = geoenv.identify(geometry=g.to_esri_geometry(), map_server="wte")
         assert r.has_ecosystem("wte") is False
 
     # Geometries near the coast have a ECU ecosystem
-    g = geocov[7]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[7]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="ecu")
     assert r.has_ecosystem("ecu") is True
     # Geometries far from the coast don't have a ECU ecosystem
-    g = geocov[0]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[0]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="ecu")
     assert r.has_ecosystem("ecu") is False
 
     # Geometries on the ocean have an EMU ecosystem
-    g = geocov[4]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[4]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     assert r.has_ecosystem("emu") is True
     # Geometries on land don't have an EMU ecosystem
-    g = geocov[0]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[0]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     assert r.has_ecosystem("emu") is False
 
 
-def test_get_wte_ecosystems(geocov):
+def test_get_wte_ecosystems(test_geometry):
     """Test the get_wte_ecosystems method.
 
     A successful query should return a non-empty list of WTE ecosystems. An
     unsuccessful query should return an empty list.
     """
     # Successful query
-    g = geocov[1]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[1]
     r = geoenv.identify(geometry=g.to_esri_geometry(), map_server="wte")
     ecosystems = r.get_wte_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) > 0
+
     # Unsuccessful query
-    g = geocov[2]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[2]
     r = geoenv.identify(geometry=g.to_esri_geometry(), map_server="wte")
     ecosystems = r.get_wte_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 0
 
 
-def test_get_ecu_ecosystems(geocov):
+def test_get_ecu_ecosystems(test_geometry):
     """Test the get_ecu_ecosystems() function
 
     A successful query should return a non-empty list of ECU ecosystems. An
     unsuccessful query should return an empty list.
     """
     # Successful query
-    g = geocov[8]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[8]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="ecu")
     ecosystems = r.get_ecu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) > 0
+
     # Unsuccessful query
-    g = geocov[1]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[1]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="ecu")
     ecosystems = r.get_ecu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 0
 
 
-def test_get_emu_ecosystems(geocov):
+def test_get_emu_ecosystems(test_geometry):
     """Test the get_emu_ecosystems() method
 
     A successful query should return a non-empty list of EMU ecosystems. An
     unsuccessful query should return an empty list.
     """
     # A series of successful queries
-    g = geocov[11]  # Point  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[11]  # Point
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     ecosystems = r.get_emu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 1
-    g = geocov[9]  # Envelope  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[9]  # Envelope
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     ecosystems = r.get_emu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 4
-    g = geocov[10]  # Polygon   # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[10]  # Polygon
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     ecosystems = r.get_emu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 7
 
     # Unsuccessful query
-    g = geocov[1]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[1]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     ecosystems = r.get_emu_ecosystems()
     assert isinstance(ecosystems, list)
     assert len(ecosystems) == 0
 
 
-def test_get_unique_ecosystems(geocov):
+def test_get_unique_ecosystems(test_geometry):
     """Test the get_unique_ecosystems method.
 
     The get_unique_ecosystems method should return a set of unique ecosystems
@@ -650,7 +610,7 @@ def test_get_unique_ecosystems(geocov):
     """
     # Test a successful response from the WTE server identify operation (i.e.
     # a response an ecosystem).
-    g = geocov[1]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[1]
     r = geoenv.identify(geometry=g.to_esri_geometry(), map_server="wte")
     unique_ecosystems = r.get_unique_ecosystems(source="wte")
     assert isinstance(unique_ecosystems, list)
@@ -658,7 +618,7 @@ def test_get_unique_ecosystems(geocov):
     assert len(unique_ecosystems) == 1
     # Test an unsuccessful response from the wte server identify operation
     # (i.e. a response that contains no ecosystem).
-    g = geocov[2]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[2]
     r = geoenv.identify(geometry=g.to_esri_geometry(), map_server="wte")
     unique_ecosystems = r.get_unique_ecosystems(source="wte")
     assert isinstance(unique_ecosystems, list)
@@ -666,7 +626,7 @@ def test_get_unique_ecosystems(geocov):
 
     # Test a successful response from the ECU server query (i.e. a response
     # that contains one or more ecosystems).
-    g = geocov[8]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[8]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="ecu")
     full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])["CSU_Descriptor"]
     unique_ecosystems = r.get_unique_ecosystems(source="ecu")
@@ -676,7 +636,7 @@ def test_get_unique_ecosystems(geocov):
     assert unique_ecosystems == list(set(full_list_of_ecosystems))
     # Test an unsuccessful response from the ECU server query (i.e. a response
     # that contains no ecosystems).
-    g = geocov[1]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[1]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="ecu")
     full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])["CSU_Descriptor"]
     unique_ecosystems = r.get_unique_ecosystems(source="ecu")
@@ -687,7 +647,7 @@ def test_get_unique_ecosystems(geocov):
 
     # Test a successful response from the EMU server query (i.e. a response
     # that contains one or more ecosystems).
-    g = geocov[11]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[11]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     # FIXME? This test differs from those for WTE and ECU because the get
     #  unique ecosystems operation is wrapped in two. See implementation for
@@ -700,7 +660,7 @@ def test_get_unique_ecosystems(geocov):
     # assert unique_ecosystems == list(set(full_list_of_ecosystems))
     # Test an unsuccessful response from the EMU server query (i.e. a response
     # that contains no ecosystems).
-    g = geocov[0]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[0]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     # full_list_of_ecosystems = r.get_attributes(["CSU_Descriptor"])[
     #     "CSU_Descriptor"]
@@ -711,13 +671,13 @@ def test_get_unique_ecosystems(geocov):
     # assert unique_ecosystems == list(set(full_list_of_ecosystems))
 
 
-def test_convert_codes_to_values(geocov):
+def test_convert_codes_to_values(test_geometry):
     """Test the convert_codes_to_values method.
 
     Codes listed in the response object should be converted to their string
     value equivalents."""
     # Test a successful response from the EMU server query operation.
-    g = geocov[4]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[4]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     # Codes are numeric values in the response object initially.
     for feature in r.json.get("features"):
@@ -730,14 +690,14 @@ def test_convert_codes_to_values(geocov):
         assert isinstance(feature.get("attributes").get("OceanName"), str)
 
     # Test an unsuccessful response from the EMU server query operation.
-    g = geocov[0]  # Location on land  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[0]  # Location on land
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
     # The response object's features list is empty and therefore a no-op.
     assert isinstance(r.json.get("features"), list)
     assert len(r.json.get("features")) == 0
 
 
-def test_get_ecosystems_for_geometry_z_values(geocov):
+def test_get_ecosystems_for_geometry_z_values(test_geometry):
     """Test the get_ecosystems_for_geometry method.
 
     When a geometry has a single z value (i.e. discrete depth) the
@@ -759,7 +719,7 @@ def test_get_ecosystems_for_geometry_z_values(geocov):
     data point in the EMU server map service interface.
     """
     # A set of tests on a point location with z values
-    g = geocov[11]  # TODO convert to esri geometry fixture, because we don't want EML related operations in the package
+    g = test_geometry[11]
     r = geoenv.query(geometry=g.to_esri_geometry(), map_server="emu")
 
     # Single z value within EMU returns one EMU
